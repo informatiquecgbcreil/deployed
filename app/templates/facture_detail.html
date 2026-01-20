@@ -204,8 +204,8 @@
                 <td>{{ l.ligne_budget.compte }} · {{ l.ligne_budget.libelle }}</td>
                 <td>{{ l.libelle }}</td>
                 <td>{{ l.quantite }}</td>
-                <td>{{ "%.2f"|format(l.prix_unitaire or 0) }} €</td>
-                <td><strong>{{ "%.2f"|format(l.montant_ligne or 0) }} €</strong></td>
+                <td>{{ "%.2f"|format(money_to_float(l.prix_unitaire or 0)) }} €</td>
+                <td><strong>{{ "%.2f"|format(money_to_float(l.montant_ligne or 0)) }} €</strong></td>
                 <td style="text-align:right">
                   <a class="btn" href="{{ url_for('inventaire_materiel.create_from_facture_ligne', ligne_id=l.id) }}">📦 Inventaire</a>
                   {% if (l.quantite or 1) > 1 %}
