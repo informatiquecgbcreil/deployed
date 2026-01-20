@@ -1,4 +1,5 @@
 import csv
+from decimal import Decimal
 from io import StringIO
 from datetime import date
 
@@ -57,8 +58,28 @@ from flask_login import login_required, current_user
 from app.rbac import require_perm, can, can_access_secteur
 
 from app.extensions import db
-from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur
+from app.models import (
+    Subvention,
+    LigneBudget,
+    Depense,
+    Projet,
+    SubventionProjet,
+    AtelierActivite,
+    SessionActivite,
+    PresenceActivite,
+    ProjetAtelier,
+    ProjetIndicateur,
+    ChargeProjet,
+    ProduitProjet,
+)
 from app.services.dashboard_service import build_dashboard_context
+from app.services.money import (
+    money_quantize,
+    money_sum,
+    money_to_float,
+    money_value,
+    parse_money,
+)
 
 bp = Blueprint("main", __name__)
 
@@ -67,7 +88,7 @@ def can_see_secteur(secteur: str) -> bool:
     return can_access_secteur(secteur)
 
 
-def _compute_prorata(lignes, montant_cible: float):
+def _compute_prorata(lignes, montant_cible):
     """
     Calcule une répartition pro-rata sur montant_base.
     Ne modifie pas la DB : retourne un dict {ligne_id: montant_theorique}
@@ -78,22 +99,22 @@ def _compute_prorata(lignes, montant_cible: float):
     if not lignes:
         return out
 
-    total_base = sum(float(l.montant_base or 0) for l in lignes)
+    total_base = money_sum(l.montant_base for l in lignes)
     if total_base <= 0:
         for l in lignes:
-            out[l.id] = 0.0
+            out[l.id] = Decimal("0.00")
         return out
 
-    ratio = float(montant_cible or 0) / total_base
+    ratio = money_value(montant_cible) / total_base
 
-    cumul = 0.0
+    cumul = Decimal("0.00")
     for i, l in enumerate(lignes):
-        base = float(l.montant_base or 0)
-        part = round(base * ratio, 2)
+        base = money_value(l.montant_base)
+        part = money_quantize(base * ratio)
         if i == len(lignes) - 1:
-            part = round(float(montant_cible or 0) - cumul, 2)
-        out[l.id] = float(part)
-        cumul += float(part)
+            part = money_quantize(money_value(montant_cible) - cumul)
+        out[l.id] = part
+        cumul += part
 
     return out
 
@@ -143,9 +164,9 @@ def subvention_create():
     secteur = (request.form.get("secteur") or "").strip()
     annee = int(request.form.get("annee_exercice") or 2025)
 
-    montant_demande = float(request.form.get("montant_demande") or 0)
-    montant_attribue = float(request.form.get("montant_attribue") or 0)
-    montant_recu = float(request.form.get("montant_recu") or 0)
+    montant_demande = parse_money(request.form.get("montant_demande"))
+    montant_attribue = parse_money(request.form.get("montant_attribue"))
+    montant_recu = parse_money(request.form.get("montant_recu"))
 
     if not can("scope:all_secteurs"):
         secteur = current_user.secteur_assigne
@@ -188,9 +209,9 @@ def subvention_pilotage(subvention_id):
 
         # --- Montants globaux ---
         if action == "update_montants":
-            sub.montant_demande = float(request.form.get("montant_demande") or 0)
-            sub.montant_attribue = float(request.form.get("montant_attribue") or 0)
-            sub.montant_recu = float(request.form.get("montant_recu") or 0)
+            sub.montant_demande = parse_money(request.form.get("montant_demande"))
+            sub.montant_attribue = parse_money(request.form.get("montant_attribue"))
+            sub.montant_recu = parse_money(request.form.get("montant_recu"))
             db.session.commit()
             flash("Montants mis à jour.", "success")
             return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
@@ -199,8 +220,8 @@ def subvention_pilotage(subvention_id):
         if action == "add_ligne":
             compte = (request.form.get("compte") or "60").strip()
             libelle = (request.form.get("libelle") or "").strip()
-            montant_base = float(request.form.get("montant_base") or 0)
-            montant_reel = float(request.form.get("montant_reel") or 0)
+            montant_base = parse_money(request.form.get("montant_base"))
+            montant_reel = parse_money(request.form.get("montant_reel"))
             nature = (request.form.get("nature") or "charge").strip()
 
 
@@ -227,9 +248,9 @@ def subvention_pilotage(subvention_id):
             target = (request.form.get("target") or "recu").strip()
 
             if target == "attribue":
-                montant_cible = float(sub.montant_attribue or 0)
+                montant_cible = money_value(sub.montant_attribue)
             else:
-                montant_cible = float(sub.montant_recu or 0)
+                montant_cible = money_value(sub.montant_recu)
 
             lignes = list(sub.lignes)
             if not lignes:
@@ -238,29 +259,29 @@ def subvention_pilotage(subvention_id):
 
             if mode == "reset":
                 for l in lignes:
-                    l.montant_reel = 0.0
+                    l.montant_reel = Decimal("0.00")
                 db.session.commit()
                 flash("Ventilation réinitialisée (réel = 0).", "warning")
                 return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
             if mode == "copy_base":
                 for l in lignes:
-                    l.montant_reel = float(l.montant_base or 0)
+                    l.montant_reel = money_value(l.montant_base)
                 db.session.commit()
                 flash("Ventilation : base copiée vers réel.", "success")
                 return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
             if mode == "prorata_base":
-                total_base = sum(float(l.montant_base or 0) for l in lignes)
+                total_base = money_sum(l.montant_base for l in lignes)
                 if total_base <= 0:
                     flash("Impossible : total des bases = 0.", "danger")
                     return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
                 theor = _compute_prorata(lignes, montant_cible)
                 for l in lignes:
-                    l.montant_reel = float(theor.get(l.id, 0.0))
+                    l.montant_reel = theor.get(l.id, Decimal("0.00"))
                 db.session.commit()
-                flash(f"Ventilation pro-rata effectuée sur {montant_cible:.2f}€.", "success")
+                flash(f"Ventilation pro-rata effectuée sur {money_to_float(montant_cible):.2f}€.", "success")
                 return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
             abort(400)
@@ -276,14 +297,14 @@ def subvention_pilotage(subvention_id):
     linked_ids = set(sp.projet_id for sp in sub.projets)
 
     lignes = list(sub.lignes)
-    total_base = round(sum(float(l.montant_base or 0) for l in lignes), 2)
+    total_base = money_sum(l.montant_base for l in lignes)
 
-    theor_recu = _compute_prorata(lignes, float(sub.montant_recu or 0))
-    theor_attribue = _compute_prorata(lignes, float(sub.montant_attribue or 0))
+    theor_recu = _compute_prorata(lignes, sub.montant_recu)
+    theor_attribue = _compute_prorata(lignes, sub.montant_attribue)
 
-    recu = float(sub.montant_recu or 0)
-    reel_lignes = float(sub.total_reel_lignes or 0)
-    engage = float(sub.total_engage or 0)
+    recu = money_value(sub.montant_recu)
+    reel_lignes = money_value(sub.total_reel_lignes)
+    engage = money_value(sub.total_engage)
 
     warnings = []
     if recu > 0 and reel_lignes == 0:
@@ -303,6 +324,86 @@ def subvention_pilotage(subvention_id):
         theor_attribue=theor_attribue,
         warnings=warnings
     )
+
+
+@bp.route("/subvention/<int:subvention_id>/sync-projet", methods=["POST"])
+@login_required
+@require_perm("subventions:edit")
+def subvention_sync_projet(subvention_id):
+    sub = Subvention.query.get_or_404(subvention_id)
+    if not can_see_secteur(sub.secteur):
+        abort(403)
+
+    projet_id = int(request.form.get("projet_id") or 0)
+    new_projet_name = (request.form.get("new_projet_name") or "").strip()
+    replace_lines = bool(request.form.get("replace_lines"))
+
+    projet = None
+    if new_projet_name:
+        if not can("projets:edit"):
+            abort(403)
+        projet = Projet(
+            nom=new_projet_name,
+            secteur=sub.secteur,
+            description="Créé depuis une subvention (import AAP).",
+        )
+        db.session.add(projet)
+        db.session.flush()
+    elif projet_id:
+        projet = Projet.query.get_or_404(projet_id)
+        if not can_see_secteur(projet.secteur) or projet.secteur != sub.secteur:
+            abort(403)
+    else:
+        flash("Choisis un projet existant ou saisis un nouveau projet.", "warning")
+        return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
+
+    try:
+        with db.session.begin():
+            if replace_lines:
+                for l in list(sub.lignes):
+                    db.session.delete(l)
+                db.session.flush()
+
+            charges = ChargeProjet.query.filter_by(projet_id=projet.id).all()
+            produits = ProduitProjet.query.filter_by(projet_id=projet.id).all()
+
+            for c in charges:
+                db.session.add(
+                    LigneBudget(
+                        subvention_id=sub.id,
+                        nature="charge",
+                        compte=(c.code_plan or "60").strip(),
+                        libelle=c.libelle,
+                        montant_base=money_value(c.montant_previsionnel),
+                        montant_reel=money_value(c.montant_reel),
+                    )
+                )
+
+            for p in produits:
+                db.session.add(
+                    LigneBudget(
+                        subvention_id=sub.id,
+                        nature="produit",
+                        compte="70",
+                        libelle=f"{p.financeur} ({p.categorie})",
+                        montant_base=money_value(p.montant_demande),
+                        montant_reel=money_value(p.montant_recu),
+                    )
+                )
+
+            link = SubventionProjet.query.filter_by(
+                projet_id=projet.id, subvention_id=sub.id
+            ).first()
+            if not link:
+                db.session.add(SubventionProjet(projet_id=projet.id, subvention_id=sub.id))
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Erreur lors de l'import AAP vers subvention.")
+        flash("Erreur lors de l'import AAP. Aucune donnée n'a été modifiée.", "danger")
+        return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
+
+    flash("AAP importé dans la subvention.", "success")
+    return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
 
 @bp.route("/subvention/<int:subvention_id>/delete", methods=["POST"])
@@ -332,8 +433,8 @@ def ligne_edit(ligne_id):
     l.nature = (request.form.get("nature") or getattr(l, "nature", "charge")).strip()
     l.compte = (request.form.get("compte") or l.compte).strip()
     l.libelle = (request.form.get("libelle") or l.libelle).strip()
-    l.montant_base = float(request.form.get("montant_base") or l.montant_base or 0)
-    l.montant_reel = float(request.form.get("montant_reel") or l.montant_reel or 0)
+    l.montant_base = parse_money(request.form.get("montant_base") or l.montant_base or 0)
+    l.montant_reel = parse_money(request.form.get("montant_reel") or l.montant_reel or 0)
     db.session.commit()
 
     flash("Ligne modifiée.", "success")
@@ -429,9 +530,9 @@ def api_lignes(subvention_id):
             "id": l.id,
             "compte": l.compte,
             "libelle": l.libelle,
-            "montant_reel": float(l.montant_reel or 0),
-            "engage": float(l.engage or 0),
-            "reste": float(l.reste or 0),
+            "montant_reel": money_to_float(l.montant_reel or 0),
+            "engage": money_to_float(l.engage or 0),
+            "reste": money_to_float(l.reste or 0),
         })
 
     return jsonify({"lignes": out})
@@ -510,34 +611,34 @@ def stats():
     all_secteurs = current_app.config.get("SECTEURS", [])
 
     # --- Totaux globaux ---
-    total_recu = round(sum(float(s.montant_recu or 0) for s in subs), 2)
-    total_engage = round(sum(float(s.total_engage or 0) for s in subs), 2)
-    total_reste = round(sum(float(s.total_reste or 0) for s in subs), 2)
+    total_recu = money_sum(s.montant_recu for s in subs)
+    total_engage = money_sum(s.total_engage for s in subs)
+    total_reste = money_sum(s.total_reste for s in subs)
 
     # --- Agrégation par secteur ---
-    by_secteur: dict[str, dict[str, float]] = {}
+    by_secteur: dict[str, dict[str, Decimal]] = {}
     for s in subs:
-        d = by_secteur.setdefault(s.secteur, {"recu": 0.0, "engage": 0.0, "reste": 0.0})
-        d["recu"] += float(s.montant_recu or 0)
-        d["engage"] += float(s.total_engage or 0)
-        d["reste"] += float(s.total_reste or 0)
+        d = by_secteur.setdefault(s.secteur, {"recu": Decimal("0.00"), "engage": Decimal("0.00"), "reste": Decimal("0.00")})
+        d["recu"] += money_value(s.montant_recu)
+        d["engage"] += money_value(s.total_engage)
+        d["reste"] += money_value(s.total_reste)
     for sec, vals in by_secteur.items():
-        vals["recu"] = round(vals.get("recu", 0.0), 2)
-        vals["engage"] = round(vals.get("engage", 0.0), 2)
-        vals["reste"] = round(vals.get("reste", 0.0), 2)
+        vals["recu"] = money_quantize(vals.get("recu", Decimal("0.00")))
+        vals["engage"] = money_quantize(vals.get("engage", Decimal("0.00")))
+        vals["reste"] = money_quantize(vals.get("reste", Decimal("0.00")))
 
     # --- Agrégation par compte ---
-    by_compte: dict[str, dict[str, float]] = {}
+    by_compte: dict[str, dict[str, Decimal]] = {}
     for s in subs:
         for l in s.lignes:
-            d = by_compte.setdefault(l.compte, {"reel": 0.0, "engage": 0.0, "reste": 0.0})
-            d["reel"] += float(l.montant_reel or 0)
-            d["engage"] += float(l.engage or 0)
-            d["reste"] += float(l.reste or 0)
+            d = by_compte.setdefault(l.compte, {"reel": Decimal("0.00"), "engage": Decimal("0.00"), "reste": Decimal("0.00")})
+            d["reel"] += money_value(l.montant_reel)
+            d["engage"] += money_value(l.engage)
+            d["reste"] += money_value(l.reste)
     for comp, vals in by_compte.items():
-        vals["reel"] = round(vals.get("reel", 0.0), 2)
-        vals["engage"] = round(vals.get("engage", 0.0), 2)
-        vals["reste"] = round(vals.get("reste", 0.0), 2)
+        vals["reel"] = money_quantize(vals.get("reel", Decimal("0.00")))
+        vals["engage"] = money_quantize(vals.get("engage", Decimal("0.00")))
+        vals["reste"] = money_quantize(vals.get("reste", Decimal("0.00")))
 
     # --- Détails par projet ---
     by_projet: list[dict[str, float | str]] = []
@@ -555,9 +656,9 @@ def stats():
         })
 
     # Valeurs max pour barres proportionnelles
-    max_secteur_total = max([v["recu"] + v["engage"] + v["reste"] for v in by_secteur.values()] + [0.0])
-    max_compte_total = max([v["reel"] + v["engage"] + v["reste"] for v in by_compte.values()] + [0.0])
-    max_projet_total = max([p["recu"] + p["engage"] + p["reste"] for p in by_projet] + [0.0])
+    max_secteur_total = max([v["recu"] + v["engage"] + v["reste"] for v in by_secteur.values()] + [Decimal("0.00")])
+    max_compte_total = max([v["reel"] + v["engage"] + v["reste"] for v in by_compte.values()] + [Decimal("0.00")])
+    max_projet_total = max([p["recu"] + p["engage"] + p["reste"] for p in by_projet] + [Decimal("0.00")])
 
     # --- Indicateurs projet (si projet sélectionné) ---
     project_indicators = []
@@ -618,17 +719,17 @@ def stats():
             return out
 
         # Finances : charges / produits sur les subventions déjà filtrées (année/secteur/projet)
-        dep = 0.0
-        rec = 0.0
+        dep = Decimal("0.00")
+        rec = Decimal("0.00")
         for s in subs:
             for l in s.lignes:
-                mt = float(l.montant_reel or 0)
+                mt = money_value(l.montant_reel)
                 if (l.nature or "").lower() == "charge":
                     dep += mt
                 elif (l.nature or "").lower() == "produit":
                     rec += mt
-        dep = round(dep, 2)
-        rec = round(rec, 2)
+        dep = money_quantize(dep)
+        rec = money_quantize(rec)
 
         inds = ProjetIndicateur.query.filter_by(projet_id=selected_projet.id, is_active=True)             .order_by(ProjetIndicateur.created_at.asc()).all()
 
@@ -671,11 +772,11 @@ def stats():
 
             elif code == "cout_par_participant":
                 u = metrics.get("participants_uniques", 0) or 0
-                val = round(dep / u, 2) if u else None
+                val = money_quantize(dep / u) if u else None
 
             elif code == "cout_par_presence":
                 u = metrics.get("presences_totales", 0) or 0
-                val = round(dep / u, 2) if u else None
+                val = money_quantize(dep / u) if u else None
 
             # objectifs (optionnels)
             target = params.get("target", None)
@@ -802,27 +903,27 @@ def bilan_global():
 
     # --- Totaux ---
     totals = {
-        "demande": round(sum(float(s.montant_demande or 0) for s in subs), 2),
-        "attribue": round(sum(float(s.montant_attribue or 0) for s in subs), 2),
-        "recu": round(sum(float(s.montant_recu or 0) for s in subs), 2),
-        "reel_lignes": round(sum(float(s.total_reel_lignes or 0) for s in subs), 2),
-        "engage": round(sum(float(s.total_engage or 0) for s in subs), 2),
-        "reste": round(sum(float(s.total_reste or 0) for s in subs), 2),
+        "demande": money_sum(s.montant_demande for s in subs),
+        "attribue": money_sum(s.montant_attribue for s in subs),
+        "recu": money_sum(s.montant_recu for s in subs),
+        "reel_lignes": money_sum(s.total_reel_lignes for s in subs),
+        "engage": money_sum(s.total_engage for s in subs),
+        "reste": money_sum(s.total_reste for s in subs),
     }
 
     # --- Alertes simples (optionnel mais utile) ---
     alertes = []
     for s in subs:
-        recu = float(s.montant_recu or 0)
-        reel_lignes = float(s.total_reel_lignes or 0)
-        engage = float(s.total_engage or 0)
+        recu = money_value(s.montant_recu)
+        reel_lignes = money_value(s.total_reel_lignes)
+        engage = money_value(s.total_engage)
 
         if recu > 0 and reel_lignes == 0:
-            alertes.append(f"{s.nom} : reçu {recu:.2f}€ mais lignes réel = 0€ (ventilation manquante).")
+            alertes.append(f"{s.nom} : reçu {money_to_float(recu):.2f}€ mais lignes réel = 0€ (ventilation manquante).")
         if recu > 0 and reel_lignes > 0 and reel_lignes < recu:
-            alertes.append(f"{s.nom} : reçu {recu:.2f}€ mais lignes réel = {reel_lignes:.2f}€ (ventilation incomplète).")
+            alertes.append(f"{s.nom} : reçu {money_to_float(recu):.2f}€ mais lignes réel = {money_to_float(reel_lignes):.2f}€ (ventilation incomplète).")
         if reel_lignes > 0 and engage > reel_lignes:
-            alertes.append(f"{s.nom} : engagé {engage:.2f}€ > lignes réel {reel_lignes:.2f}€ (dépassement).")
+            alertes.append(f"{s.nom} : engagé {money_to_float(engage):.2f}€ > lignes réel {money_to_float(reel_lignes):.2f}€ (dépassement).")
 
     # --- Listes de filtres affichées (secteurs / projets) ---
     # secteurs : soit config, soit distinct en base, MAIS filtré par rôle
@@ -885,7 +986,7 @@ def export_depenses_csv():
             l.compte,
             l.libelle,
             d.libelle,
-            f"{float(d.montant or 0):.2f}".replace(".", ","),
+            f"{money_to_float(d.montant or 0):.2f}".replace(".", ","),
             d.date_paiement.isoformat() if d.date_paiement else "",
             d.type_depense or ""
         ])
@@ -916,10 +1017,10 @@ def export_subvention_csv(subvention_id):
             s.annee_exercice,
             l.compte,
             l.libelle,
-            f"{float(l.montant_base or 0):.2f}".replace(".", ","),
-            f"{float(l.montant_reel or 0):.2f}".replace(".", ","),
-            f"{float(l.engage or 0):.2f}".replace(".", ","),
-            f"{float(l.reste or 0):.2f}".replace(".", ","),
+            f"{money_to_float(l.montant_base or 0):.2f}".replace(".", ","),
+            f"{money_to_float(l.montant_reel or 0):.2f}".replace(".", ","),
+            f"{money_to_float(l.engage or 0):.2f}".replace(".", ","),
+            f"{money_to_float(l.reste or 0):.2f}".replace(".", ","),
         ])
 
     content = out.getvalue().encode("utf-8-sig")
@@ -945,14 +1046,14 @@ def subvention_bilan(subvention_id: int):
         abort(403)
 
     # Collecte des lignes de budget
-    lignes: list[dict[str, float | str]] = []
+    lignes: list[dict[str, Decimal | str]] = []
     # Calcul du montant maximum utilisé pour la largeur des barres
-    max_total = 0.0
+    max_total = Decimal("0.00")
     for l in sub.lignes:
-        base = float(l.montant_base or 0)
-        reel = float(l.montant_reel or 0)
-        engage = float(l.engage or 0)
-        reste = float(l.reste or 0)
+        base = money_value(l.montant_base)
+        reel = money_value(l.montant_reel)
+        engage = money_value(l.engage)
+        reste = money_value(l.reste)
         nature = getattr(l, "nature", "charge")
         total_for_max = reel + engage + reste
         if total_for_max > max_total:
@@ -971,24 +1072,24 @@ def subvention_bilan(subvention_id: int):
     # Calcul des pourcentages pour chaque ligne (évite de surcharger le template)
     if max_total > 0:
         for d in lignes:
-            d["p_reel"] = (d["reel"] / max_total) * 100.0 if d["reel"] else 0.0
-            d["p_engage"] = (d["engage"] / max_total) * 100.0 if d["engage"] else 0.0
-            d["p_reste"] = (d["reste"] / max_total) * 100.0 if d["reste"] else 0.0
+            d["p_reel"] = (d["reel"] / max_total) * 100 if d["reel"] else 0
+            d["p_engage"] = (d["engage"] / max_total) * 100 if d["engage"] else 0
+            d["p_reste"] = (d["reste"] / max_total) * 100 if d["reste"] else 0
     else:
         for d in lignes:
-            d["p_reel"] = d["p_engage"] = d["p_reste"] = 0.0
+            d["p_reel"] = d["p_engage"] = d["p_reste"] = 0
 
     # Totaux synthétiques (charges et produits séparés)
     totals = {
-        "demande": float(sub.montant_demande or 0),
-        "attribue": float(sub.montant_attribue or 0),
-        "recu": float(sub.montant_recu or 0),
-        "base_charges": 0.0,
-        "base_produits": 0.0,
-        "reel_charges": 0.0,
-        "reel_produits": 0.0,
-        "engage": 0.0,
-        "reste": 0.0,
+        "demande": money_value(sub.montant_demande),
+        "attribue": money_value(sub.montant_attribue),
+        "recu": money_value(sub.montant_recu),
+        "base_charges": Decimal("0.00"),
+        "base_produits": Decimal("0.00"),
+        "reel_charges": Decimal("0.00"),
+        "reel_produits": Decimal("0.00"),
+        "engage": Decimal("0.00"),
+        "reste": Decimal("0.00"),
     }
     for d in lignes:
         if d["nature"] == "produit":
@@ -1002,7 +1103,7 @@ def subvention_bilan(subvention_id: int):
 
     # Arrondis des totaux
     for k in totals:
-        totals[k] = round(float(totals[k] or 0), 2)
+        totals[k] = money_quantize(totals[k])
 
     return render_template(
         "subvention_bilan.html",

@@ -6,11 +6,11 @@
     {% include "_projet_budget_header.html" %}
   </div>
 
-  {% set total_charges = budget_stats.total_charges or 0 %}
-  {% set total_demande = budget_stats.total_demande or 0 %}
-  {% set total_accorde = budget_stats.total_accorde or 0 %}
-  {% set total_recu = budget_stats.total_recu or 0 %}
-  {% set total_reste = budget_stats.total_charges_reste or 0 %}
+  {% set total_charges = money_to_float(budget_stats.total_charges or 0) %}
+  {% set total_demande = money_to_float(budget_stats.total_demande or 0) %}
+  {% set total_accorde = money_to_float(budget_stats.total_accorde or 0) %}
+  {% set total_recu = money_to_float(budget_stats.total_recu or 0) %}
+  {% set total_reste = money_to_float(budget_stats.total_charges_reste or 0) %}
 
   {% set pct_demande = (total_demande / total_charges * 100) if total_charges else 0 %}
   {% set pct_accorde = (total_accorde / total_charges * 100) if total_charges else 0 %}
