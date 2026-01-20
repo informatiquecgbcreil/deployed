@@ -19,7 +19,7 @@ def create_app():
     os.makedirs(app.instance_path, exist_ok=True)
 
     if app.config.get("SECRET_KEY") == DEFAULT_SECRET_KEY and not app.debug:
-        app.logger.warning(
+        raise RuntimeError(
             "SECRET_KEY par défaut détectée. Définis SECRET_KEY via variable d'environnement pour la prod."
         )
 

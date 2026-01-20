@@ -357,43 +357,51 @@ def subvention_sync_projet(subvention_id):
         flash("Choisis un projet existant ou saisis un nouveau projet.", "warning")
         return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
-    if replace_lines:
-        for l in list(sub.lignes):
-            db.session.delete(l)
-        db.session.flush()
+    try:
+        with db.session.begin():
+            if replace_lines:
+                for l in list(sub.lignes):
+                    db.session.delete(l)
+                db.session.flush()
 
-    charges = ChargeProjet.query.filter_by(projet_id=projet.id).all()
-    produits = ProduitProjet.query.filter_by(projet_id=projet.id).all()
+            charges = ChargeProjet.query.filter_by(projet_id=projet.id).all()
+            produits = ProduitProjet.query.filter_by(projet_id=projet.id).all()
 
-    for c in charges:
-        db.session.add(
-            LigneBudget(
-                subvention_id=sub.id,
-                nature="charge",
-                compte=(c.code_plan or "60").strip(),
-                libelle=c.libelle,
-                montant_base=money_value(c.montant_previsionnel),
-                montant_reel=money_value(c.montant_reel),
-            )
-        )
+            for c in charges:
+                db.session.add(
+                    LigneBudget(
+                        subvention_id=sub.id,
+                        nature="charge",
+                        compte=(c.code_plan or "60").strip(),
+                        libelle=c.libelle,
+                        montant_base=money_value(c.montant_previsionnel),
+                        montant_reel=money_value(c.montant_reel),
+                    )
+                )
 
-    for p in produits:
-        db.session.add(
-            LigneBudget(
-                subvention_id=sub.id,
-                nature="produit",
-                compte="70",
-                libelle=f"{p.financeur} ({p.categorie})",
-                montant_base=money_value(p.montant_demande),
-                montant_reel=money_value(p.montant_recu),
-            )
-        )
+            for p in produits:
+                db.session.add(
+                    LigneBudget(
+                        subvention_id=sub.id,
+                        nature="produit",
+                        compte="70",
+                        libelle=f"{p.financeur} ({p.categorie})",
+                        montant_base=money_value(p.montant_demande),
+                        montant_reel=money_value(p.montant_recu),
+                    )
+                )
 
-    link = SubventionProjet.query.filter_by(projet_id=projet.id, subvention_id=sub.id).first()
-    if not link:
-        db.session.add(SubventionProjet(projet_id=projet.id, subvention_id=sub.id))
+            link = SubventionProjet.query.filter_by(
+                projet_id=projet.id, subvention_id=sub.id
+            ).first()
+            if not link:
+                db.session.add(SubventionProjet(projet_id=projet.id, subvention_id=sub.id))
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Erreur lors de l'import AAP vers subvention.")
+        flash("Erreur lors de l'import AAP. Aucune donnée n'a été modifiée.", "danger")
+        return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
-    db.session.commit()
     flash("AAP importé dans la subvention.", "success")
     return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
