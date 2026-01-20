@@ -40,7 +40,7 @@
           <select name="id" id="id" class="input" style="min-width:320px;">
             {% for s in subventions %}
               <option value="{{ s.id }}" {% if selected_subvention and s.id == selected_subvention.id %}selected{% endif %}>
-                [{{ s.secteur }}] {{ s.nom }} ({{ '%.2f'|format(s.montant_attribue) }} €)
+                [{{ s.secteur }}] {{ s.nom }} ({{ money_format(s.montant_attribue) }} €)
               </option>
             {% endfor %}
           </select>
@@ -55,7 +55,7 @@
         <div class="grid two">
           <div class="card">
             <h3>Montant accordé</h3>
-            <h2>{{ '%.2f'|format(data.kpis.montant_accorde) }} €</h2>
+          <h2>{{ money_format(data.kpis.montant_accorde) }} €</h2>
             <p class="muted">Montant attribué (fallback : budget réel des lignes).</p>
           </div>
           <div class="card">
@@ -99,7 +99,7 @@
                       <td><strong>{{ d.libelle }}</strong></td>
                       <td class="muted">{{ d.compte }} · {{ d.ligne }}</td>
                       <td class="muted">{{ d.reference }}</td>
-                      <td class="right"><strong>{{ '%.2f'|format(d.montant) }} €</strong></td>
+                      <td class="right"><strong>{{ money_format(d.montant) }} €</strong></td>
                     </tr>
                   {% endfor %}
                 </tbody>
@@ -133,7 +133,7 @@
                       <td><strong>{{ m.designation }}</strong></td>
                       <td>{{ m.etat }}</td>
                       <td class="muted">{{ m.localisation }}</td>
-                      <td class="right">{% if m.valeur != '' %}{{ '%.2f'|format(m.valeur) }} €{% endif %}</td>
+                      <td class="right">{% if m.valeur != '' %}{{ money_format(m.valeur) }} €{% endif %}</td>
                     </tr>
                   {% endfor %}
                 </tbody>

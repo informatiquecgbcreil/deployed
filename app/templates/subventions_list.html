@@ -10,9 +10,9 @@
 {% set ns = namespace(count=0, total_demande=0, total_attribue=0, total_recu=0, years=[]) %}
 {% for s in subs %}
   {% set ns.count = ns.count + 1 %}
-  {% set ns.total_demande = ns.total_demande + (s.montant_demande or 0) %}
-  {% set ns.total_attribue = ns.total_attribue + (s.montant_attribue or 0) %}
-  {% set ns.total_recu = ns.total_recu + (s.montant_recu or 0) %}
+  {% set ns.total_demande = ns.total_demande + money_to_float(s.montant_demande or 0) %}
+  {% set ns.total_attribue = ns.total_attribue + money_to_float(s.montant_attribue or 0) %}
+  {% set ns.total_recu = ns.total_recu + money_to_float(s.montant_recu or 0) %}
   {% if s.annee_exercice not in ns.years %}
     {% set _ = ns.years.append(s.annee_exercice) %}
   {% endif %}
@@ -47,18 +47,18 @@
 
       <div class="kpi-card">
         <div class="muted">Total demandé</div>
-        <div class="kpi-value">{{ "%.2f"|format(ns.total_demande or 0) }}€</div>
+        <div class="kpi-value">{{ money_format(ns.total_demande or 0) }}€</div>
       </div>
 
       <div class="kpi-card">
         <div class="muted">Total attribué</div>
-        <div class="kpi-value">{{ "%.2f"|format(ns.total_attribue or 0) }}€</div>
+        <div class="kpi-value">{{ money_format(ns.total_attribue or 0) }}€</div>
         <div class="kpi-sub">{{ "%.0f"|format(pct_attribue_sur_demande) }}% du demandé</div>
       </div>
 
       <div class="kpi-card">
         <div class="muted">Total reçu</div>
-        <div class="kpi-value">{{ "%.2f"|format(ns.total_recu or 0) }}€</div>
+        <div class="kpi-value">{{ money_format(ns.total_recu or 0) }}€</div>
         <div class="kpi-sub">{{ "%.0f"|format(pct_recu_sur_attribue) }}% de l’attribué</div>
       </div>
     </div>
@@ -69,8 +69,8 @@
         <div class="meter__fill meter__fill--ok" style="width:{{ pct_recu_sur_attribue }}%"></div>
       </div>
       <div class="balance-legend">
-        <div class="muted">Attribué : <strong>{{ "%.2f"|format(ns.total_attribue or 0) }}€</strong></div>
-        <div class="muted">Reçu : <strong>{{ "%.2f"|format(ns.total_recu or 0) }}€</strong> ({{ "%.0f"|format(pct_recu_sur_attribue) }}%)</div>
+        <div class="muted">Attribué : <strong>{{ money_format(ns.total_attribue or 0) }}€</strong></div>
+        <div class="muted">Reçu : <strong>{{ money_format(ns.total_recu or 0) }}€</strong> ({{ "%.0f"|format(pct_recu_sur_attribue) }}%)</div>
       </div>
     </div>
   </div>
@@ -184,7 +184,7 @@
         </thead>
         <tbody>
           {% for s in subs %}
-            {% set pct = ((s.montant_recu or 0) / (s.montant_attribue or 0) * 100) if (s.montant_attribue or 0) else 0 %}
+            {% set pct = ((money_to_float(s.montant_recu or 0)) / (money_to_float(s.montant_attribue or 0)) * 100) if (s.montant_attribue or 0) else 0 %}
             <tr class="subvRow"
                 data-search="{{ (s.nom ~ ' ' ~ s.secteur ~ ' ' ~ s.annee_exercice)|lower }}"
                 data-year="{{ s.annee_exercice }}"
@@ -192,9 +192,9 @@
               <td><strong>{{ s.nom }}</strong></td>
               <td>{{ s.secteur }}</td>
               <td>{{ s.annee_exercice }}</td>
-              <td>{{ "%.2f"|format(s.montant_demande or 0) }}€</td>
-              <td>{{ "%.2f"|format(s.montant_attribue or 0) }}€</td>
-              <td><strong>{{ "%.2f"|format(s.montant_recu or 0) }}€</strong></td>
+              <td>{{ money_format(s.montant_demande or 0) }}€</td>
+              <td>{{ money_format(s.montant_attribue or 0) }}€</td>
+              <td><strong>{{ money_format(s.montant_recu or 0) }}€</strong></td>
               <td style="min-width:220px;">
                 <div class="meter" aria-label="Suivi">
                   <div class="meter__fill {{ 'meter__fill--ok' if pct >= 80 else ('meter__fill--warn' if pct >= 30 else 'meter__fill--danger') }}" style="width:{{ pct }}%"></div>

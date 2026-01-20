@@ -7,15 +7,15 @@
 #}
 
 {# Jinja n'a pas accès à la fonction Python float() : on utilise le filtre |float #}
-{% set demande = (totals.demande or 0) | float %}
-{% set attribue = (totals.attribue or 0) | float %}
-{% set recu = (totals.recu or 0) | float %}
+{% set demande = money_to_float(totals.demande or 0) %}
+{% set attribue = money_to_float(totals.attribue or 0) %}
+{% set recu = money_to_float(totals.recu or 0) %}
 {% set base_charges = (totals.base_charges or 0) | float %}
 {% set base_produits = (totals.base_produits or 0) | float %}
 {% set reel_charges = (totals.reel_charges or 0) | float %}
 {% set reel_produits = (totals.reel_produits or 0) | float %}
-{% set engage = (totals.engage or 0) | float %}
-{% set reste = (totals.reste or 0) | float %}
+{% set engage = money_to_float(totals.engage or 0) %}
+{% set reste = money_to_float(totals.reste or 0) %}
 
 {% set pct_recu_sur_attribue = (recu / attribue * 100) if attribue else 0 %}
 {% set pct_attribue_sur_demande = (attribue / demande * 100) if demande else 0 %}
@@ -138,8 +138,8 @@
               <td><strong>{{ l.libelle }}</strong></td>
               <td>{{ "%.2f"|format(l.base or 0) }}€</td>
               <td>{{ "%.2f"|format(l.reel or 0) }}€</td>
-              <td>{{ "%.2f"|format(l.engage or 0) }}€</td>
-              <td>{{ "%.2f"|format(l.reste or 0) }}€</td>
+              <td>{{ money_format(l.engage or 0) }}€</td>
+              <td>{{ money_format(l.reste or 0) }}€</td>
               <td style="min-width:240px;">
                 <div class="meter" aria-label="ligne">
                   {% if is_prod %}

@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import InventaireItem, FactureLigne, Depense
 from app.rbac import require_perm, can_access_secteur
+from app.services.money import parse_money
 
 
 bp = Blueprint("inventaire_materiel", __name__, url_prefix="/inventaire")
@@ -179,7 +180,7 @@ def new_item():
 
         valeur_unitaire = request.form.get("valeur_unitaire")
         try:
-            valeur_unitaire = float(valeur_unitaire) if valeur_unitaire not in (None, "") else None
+            valeur_unitaire = parse_money(valeur_unitaire) if valeur_unitaire not in (None, "") else None
         except Exception:
             valeur_unitaire = None
 
@@ -257,7 +258,7 @@ def edit_item(item_id: int):
 
         valeur_unitaire = request.form.get("valeur_unitaire")
         try:
-            item.valeur_unitaire = float(valeur_unitaire) if valeur_unitaire not in (None, "") else None
+            item.valeur_unitaire = parse_money(valeur_unitaire) if valeur_unitaire not in (None, "") else None
         except Exception:
             item.valeur_unitaire = None
 
@@ -422,7 +423,7 @@ def create_from_depense(depense_id: int):
 
     valeur_unitaire = request.form.get("valeur_unitaire")
     try:
-        valeur_unitaire = float(valeur_unitaire) if valeur_unitaire not in (None, "") else None
+        valeur_unitaire = parse_money(valeur_unitaire) if valeur_unitaire not in (None, "") else None
     except Exception:
         valeur_unitaire = None
 

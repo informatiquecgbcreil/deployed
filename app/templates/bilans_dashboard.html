@@ -50,7 +50,7 @@
         </div>
         <div class="card">
           <h3>Budget total disponible</h3>
-          <h2>{{ '%.2f'|format(kpis.budget) }} €</h2>
+          <h2>{{ money_format(kpis.budget) }} €</h2>
           <p class="muted">Somme des montants réels (lignes charges) des subventions.</p>
         </div>
         <div class="card">
@@ -60,12 +60,12 @@
         </div>
         <div class="card">
           <h3>Reste à engager</h3>
-          <h2>{{ '%.2f'|format(kpis.reste) }} €</h2>
+          <h2>{{ money_format(kpis.reste) }} €</h2>
           <p class="muted">Budget restant sur l'année.</p>
         </div>
         <div class="card">
           <h3>À ventiler</h3>
-          <h2>{{ '%.2f'|format(kpis.a_ventiler) }} €</h2>
+          <h2>{{ money_format(kpis.a_ventiler) }} €</h2>
           <p class="muted">Lignes de facture marquées “À ventiler”.</p>
         </div>
         <div class="card">

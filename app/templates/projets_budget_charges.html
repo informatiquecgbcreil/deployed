@@ -35,26 +35,26 @@
       <div class="kpi-grid">
         <div class="kpi-card">
           <div class="muted">Charges (prévisionnel)</div>
-          <div class="kpi-value">{{ "%.2f"|format(total_prev or 0) }}€</div>
+          <div class="kpi-value">{{ money_format(total_prev or 0) }}€</div>
         </div>
 
         <div class="kpi-card">
           <div class="muted">Couvert / ventilé</div>
-          <div class="kpi-value">{{ "%.2f"|format(total_ventile or 0) }}€</div>
+          <div class="kpi-value">{{ money_format(total_ventile or 0) }}€</div>
           <div class="kpi-sub">{{ "%.0f"|format(pct_ventile) }}% des charges</div>
         </div>
 
         <div class="kpi-card">
           <div class="muted">Reste à financer</div>
           <div class="kpi-value {{ 'kpi-value--danger' if pct_reste >= 25 else ('kpi-value--warn' if total_reste > 0 else '') }}">
-            {{ "%.2f"|format(total_reste or 0) }}€
+            {{ money_format(total_reste or 0) }}€
           </div>
           <div class="kpi-sub">{{ "%.0f"|format(pct_reste) }}% du budget</div>
         </div>
 
         <div class="kpi-card">
           <div class="muted">Réel (info)</div>
-          <div class="kpi-value">{{ "%.2f"|format(total_reel or 0) }}€</div>
+          <div class="kpi-value">{{ money_format(total_reel or 0) }}€</div>
         </div>
       </div>
 
@@ -64,8 +64,8 @@
           <div class="meter__fill meter__fill--ok" style="width:{{ pct_ventile }}%"></div>
         </div>
         <div class="balance-legend">
-          <div class="muted">Couvert : <strong>{{ "%.2f"|format(total_ventile or 0) }}€</strong> ({{ "%.0f"|format(pct_ventile) }}%)</div>
-          <div class="muted">À financer : <strong>{{ "%.2f"|format(total_reste or 0) }}€</strong> ({{ "%.0f"|format(pct_reste) }}%)</div>
+          <div class="muted">Couvert : <strong>{{ money_format(total_ventile or 0) }}€</strong> ({{ "%.0f"|format(pct_ventile) }}%)</div>
+          <div class="muted">À financer : <strong>{{ money_format(total_reste or 0) }}€</strong> ({{ "%.0f"|format(pct_reste) }}%)</div>
         </div>
       </div>
 
@@ -132,12 +132,12 @@
             <td>{{ c.code_plan }}</td>
             <td>{{ c.libelle }}</td>
 
-            <td class="num mono">{{ "%.2f"|format(base) }}€</td>
-            <td class="num mono">{{ "%.2f"|format(c.montant_reel or 0) }}€</td>
+            <td class="num mono">{{ money_format(base) }}€</td>
+            <td class="num mono">{{ money_format(c.montant_reel or 0) }}€</td>
 
             <td class="num">
               <div class="cell-money">
-                <div class="cell-money__main mono">{{ "%.2f"|format(v) }}€</div>
+                <div class="cell-money__main mono">{{ money_format(v) }}€</div>
                 <div class="meter meter--thin" aria-label="Couverture de la ligne">
                   <div class="meter__fill meter__fill--ok" style="width:{{ "%.0f"|format(pct_ligne) }}%"></div>
                 </div>
@@ -153,7 +153,7 @@
 			  <div class="cell-money">
 				<div class="cell-money__main mono">
 				  <span class="pill {{ 'pill--danger' if pct_reste_ligne >= 25 else ('pill--warn' if reste > 0 else 'pill--ok') }}">
-					{{ "%.2f"|format(reste) }}€
+					{{ money_format(reste) }}€
 				  </span>
 				</div>
 
@@ -166,8 +166,8 @@
 			</td>
 
 
-            <td class="num mono">{{ "%.2f"|format(c.engage or 0) }}€</td>
-            <td class="num mono">{{ "%.2f"|format(c.reste_a_engager or 0) }}€</td>
+            <td class="num mono">{{ money_format(c.engage or 0) }}€</td>
+            <td class="num mono">{{ money_format(c.reste_a_engager or 0) }}€</td>
 
             <td class="actions" style="white-space:nowrap">
               <a class="btn" href="{{ url_for('projets.projet_budget_charge_edit', projet_id=projet.id, charge_id=c.id) }}">✏️</a>

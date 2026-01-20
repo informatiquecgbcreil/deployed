@@ -70,7 +70,7 @@
           </div>
           <div class="card">
             <h3>Budget disponible</h3>
-            <h2>{{ '%.2f'|format(data.kpis.budget) }} €</h2>
+            <h2>{{ money_format(data.kpis.budget) }} €</h2>
             <p class="muted">Somme des montants réels (charges) sur l'année.</p>
           </div>
           <div class="card">
@@ -80,12 +80,12 @@
           </div>
           <div class="card">
             <h3>Reste à engager</h3>
-            <h2>{{ '%.2f'|format(data.kpis.reste) }} €</h2>
+            <h2>{{ money_format(data.kpis.reste) }} €</h2>
             <p class="muted">Budget restant.</p>
           </div>
           <div class="card">
             <h3>À ventiler</h3>
-            <h2>{{ '%.2f'|format(data.kpis.a_ventiler) }} €</h2>
+            <h2>{{ money_format(data.kpis.a_ventiler) }} €</h2>
             <p class="muted">Lignes de facture marquées “À ventiler”.</p>
           </div>
           <div class="card">
@@ -116,9 +116,9 @@
                     <tr>
                       <td class="muted">{{ l.compte }}</td>
                       <td><strong>{{ l.libelle }}</strong></td>
-                      <td class="right">{{ '%.2f'|format(l.montant_reel) }} €</td>
-                      <td class="right">{{ '%.2f'|format(l.engage) }} €</td>
-                      <td class="right">{{ '%.2f'|format(l.reste) }} €</td>
+                      <td class="right">{{ money_format(l.montant_reel) }} €</td>
+                      <td class="right">{{ money_format(l.engage) }} €</td>
+                      <td class="right">{{ money_format(l.reste) }} €</td>
                       <td class="right">{{ '%.1f'|format(l.taux) }} %</td>
                     </tr>
                   {% endfor %}
@@ -152,7 +152,7 @@
                       <td>{{ d.fournisseur }}</td>
                       <td><strong>{{ d.libelle }}</strong></td>
                       <td class="muted">{{ d.reference }}</td>
-                      <td class="right"><strong>{{ '%.2f'|format(d.montant) }} €</strong></td>
+                      <td class="right"><strong>{{ money_format(d.montant) }} €</strong></td>
                     </tr>
                   {% endfor %}
                 </tbody>
