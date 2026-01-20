@@ -8,9 +8,9 @@
 
     <div class="kpi">
       <div class="box"><div class="muted">Alloué (ligne réel)</div><div class="v">{{ "%.2f"|format(alloue) }}€</div></div>
-      <div class="box"><div class="muted">Engagé (ligne)</div><div class="v">{{ "%.2f"|format(engage) }}€</div></div>
-      <div class="box"><div class="muted">Reste (ligne)</div><div class="v">{{ "%.2f"|format(reste) }}€</div></div>
-      <div class="box"><div class="muted">Cette dépense</div><div class="v">{{ "%.2f"|format(dep.montant or 0) }}€</div></div>
+      <div class="box"><div class="muted">Engagé (ligne)</div><div class="v">{{ "%.2f"|format(money_to_float(engage)) }}€</div></div>
+      <div class="box"><div class="muted">Reste (ligne)</div><div class="v">{{ "%.2f"|format(money_to_float(reste)) }}€</div></div>
+      <div class="box"><div class="muted">Cette dépense</div><div class="v">{{ "%.2f"|format(money_to_float(dep.montant or 0)) }}€</div></div>
       <div class="box"><div class="muted">Type</div><div class="v">{{ dep.type_depense }}</div></div>
       <div class="box"><div class="muted">Date</div><div class="v">{{ dep.date_paiement or "-" }}</div></div>
     </div>

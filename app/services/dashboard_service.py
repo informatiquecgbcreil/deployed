@@ -17,6 +17,7 @@ from app.models import (
     PresenceActivite,
     Participant,
 )
+from app.services.money import money_sum, money_to_float, money_value
 
 
 def _month_key(d: date) -> str:
@@ -75,43 +76,43 @@ def build_dashboard_context(user, *, days: int = 90) -> Dict[str, Any]:
     subs = subs_q.all()
 
     # --- KPIs budget (déjà calculés via propriétés sur Subvention) ---
-    total_attribue = sum(float(s.montant_attribue or 0) for s in subs)
-    total_recu = sum(float(s.montant_recu or 0) for s in subs)
-    total_engage = sum(float(s.total_engage or 0) for s in subs)
-    total_reste = sum(float(s.total_reste or 0) for s in subs)
+    total_attribue = money_sum(s.montant_attribue for s in subs)
+    total_recu = money_sum(s.montant_recu for s in subs)
+    total_engage = money_sum(s.total_engage for s in subs)
+    total_reste = money_sum(s.total_reste for s in subs)
     taux = 0.0
     if total_attribue > 0:
-        taux = round((total_engage / total_attribue) * 100, 1)
+        taux = round(float((total_engage / total_attribue) * 100), 1)
 
     # --- Alertes (pilotage) ---
     alerts: List[Dict[str, Any]] = []
     for s in subs:
-        recu = float(s.montant_recu or 0)
-        reel_lignes = float(s.total_reel_lignes or 0)
-        engage = float(s.total_engage or 0)
-        reste = float(s.total_reste or 0)
+        recu = money_value(s.montant_recu or 0)
+        reel_lignes = money_value(s.total_reel_lignes or 0)
+        engage = money_value(s.total_engage or 0)
+        reste = money_value(s.total_reste or 0)
 
         # reçu mais pas ventilé
         if recu > 0 and reel_lignes == 0:
             alerts.append({
                 "level": "danger",
-                "text": f"{s.nom} : reçu {recu:.2f}€ mais lignes réel = 0€ (ventilation manquante).",
+                "text": f"{s.nom} : reçu {money_to_float(recu):.2f}€ mais lignes réel = 0€ (ventilation manquante).",
                 "url": _safe("main.subvention_pilotage", subvention_id=s.id),
             })
         # engagé > réel lignes
         if reel_lignes > 0 and engage > reel_lignes:
             alerts.append({
                 "level": "danger",
-                "text": f"{s.nom} : engagé {engage:.2f}€ > lignes réel {reel_lignes:.2f}€ (dépassement).",
+                "text": f"{s.nom} : engagé {money_to_float(engage):.2f}€ > lignes réel {money_to_float(reel_lignes):.2f}€ (dépassement).",
                 "url": _safe("main.subvention_pilotage", subvention_id=s.id),
             })
         # proche du plafond
-        if float(s.montant_attribue or 0) > 0:
-            pct = (engage / float(s.montant_attribue or 0)) * 100
+        if money_value(s.montant_attribue or 0) > 0:
+            pct = float((engage / money_value(s.montant_attribue or 0)) * 100)
             if pct >= 80:
                 alerts.append({
                     "level": "warning",
-                    "text": f"{s.nom} : {pct:.0f}% consommé (reste {reste:.2f}€).",
+                    "text": f"{s.nom} : {pct:.0f}% consommé (reste {money_to_float(reste):.2f}€).",
                     "url": _safe("main.subvention_pilotage", subvention_id=s.id),
                 })
 
@@ -144,14 +145,14 @@ def build_dashboard_context(user, *, days: int = 90) -> Dict[str, Any]:
         )
     dep_rows = dep_q.with_entities(Depense.montant, Depense.date_paiement, Depense.created_at).all()
 
-    dep_by_month = {k: 0.0 for k in month_labels}
+    dep_by_month = {k: money_value(0) for k in month_labels}
     for montant, date_paiement, created_at in dep_rows:
         d = date_paiement or (created_at.date() if created_at else None)
         if not d:
             continue
         mk = _month_key(d)
         if mk in dep_by_month:
-            dep_by_month[mk] += float(montant or 0)
+            dep_by_month[mk] += money_value(montant or 0)
 
     # Sessions par mois (réalisées / créées)
     sess_rows = sessions_q.with_entities(SessionActivite.created_at).all()
@@ -181,11 +182,14 @@ def build_dashboard_context(user, *, days: int = 90) -> Dict[str, Any]:
     charts = {
         "budget_donut": {
             "labels": ["Engagé", "Disponible"],
-            "values": [round(total_engage, 2), round(max(total_attribue - total_engage, 0.0), 2)],
+            "values": [
+                money_to_float(total_engage),
+                money_to_float(max(total_attribue - total_engage, money_value(0))),
+            ],
         },
         "depenses_bar": {
             "labels": month_labels,
-            "values": [round(dep_by_month[k], 2) for k in month_labels],
+            "values": [money_to_float(dep_by_month[k]) for k in month_labels],
         },
         "sessions_line": {
             "labels": month_labels,
@@ -219,10 +223,10 @@ def build_dashboard_context(user, *, days: int = 90) -> Dict[str, Any]:
         "mode": "global" if has_scope_all else "secteur",
         "days": days,
         "kpis": {
-            "attribue": round(total_attribue, 2),
-            "recu": round(total_recu, 2),
-            "engage": round(total_engage, 2),
-            "reste": round(total_reste, 2),
+            "attribue": money_to_float(total_attribue),
+            "recu": money_to_float(total_recu),
+            "engage": money_to_float(total_engage),
+            "reste": money_to_float(total_reste),
             "taux": taux,
             "sessions": sessions_recent,
             "uniques": uniques_recent,

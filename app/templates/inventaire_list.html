@@ -60,7 +60,7 @@
                 <td>{{ it.quantite }}</td>
                 <td><span class="badge">{{ it.etat }}</span></td>
                 <td>{{ it.localisation or "—" }}</td>
-                <td>{% if it.valeur_unitaire is not none %}{{ "%.2f"|format(it.valeur_unitaire) }} €{% else %}—{% endif %}</td>
+                <td>{% if it.valeur_unitaire is not none %}{{ "%.2f"|format(money_to_float(it.valeur_unitaire)) }} €{% else %}—{% endif %}</td>
                 <td>
                   {% if it.depense_id %}
                     <a href="{{ url_for('budget.depense_edit', depense_id=it.depense_id) }}">Dépense #{{ it.depense_id }}</a>
