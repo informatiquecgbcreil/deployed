@@ -30,7 +30,7 @@ def create_app():
     login_manager.login_view = "auth.login"
 
     # ------------------------------------------------------------------
-    # Jinja helper: safe_url_for
+    # Jinja helpers
     # ------------------------------------------------------------------
     def safe_url_for(endpoint: str, fallback: str = "#", **values) -> str:
         try:
@@ -39,6 +39,8 @@ def create_app():
             return fallback
 
     app.jinja_env.globals["safe_url_for"] = safe_url_for
+    from app.services.money import money_to_float
+    app.jinja_env.globals["money_to_float"] = money_to_float
 
     @login_manager.user_loader
     def load_user(user_id):
