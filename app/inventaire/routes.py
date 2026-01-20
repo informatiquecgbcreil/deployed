@@ -127,6 +127,7 @@ def factures_list():
 
 @bp.route("/nouvelle", methods=["GET", "POST"])
 @login_required
+@require_perm("inventaire:edit")
 def facture_new():
     if False:
         abort(403)
@@ -146,7 +147,14 @@ def facture_new():
         ref = (request.form.get("reference_facture") or "").strip()
 
         date_str = (request.form.get("date_facture") or "").strip()
-        date_f = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else None
+        if date_str:
+            try:
+                date_f = datetime.strptime(date_str, "%Y-%m-%d").date()
+            except ValueError:
+                flash("Date de facture invalide.", "danger")
+                return redirect(url_for("inventaire.facture_new"))
+        else:
+            date_f = None
 
         f = FactureAchat(
             secteur_principal=secteur,

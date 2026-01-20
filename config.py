@@ -1,6 +1,7 @@
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+DEFAULT_SECRET_KEY = "Uneapplicationdesuivibudgétairequisimplifielaviedetoutlemondenormalement"
 
 # Dossier "data" optionnel (utile si tu pack en exe ou si tu veux stocker ailleurs)
 DEFAULT_DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data")  # ex: si ton exe est dans C:\AppGestion\app\
@@ -11,8 +12,9 @@ os.makedirs(DATA_DIR, exist_ok=True)
 class Config:
     SECRET_KEY = os.environ.get(
         "SECRET_KEY",
-        "Uneapplicationdesuivibudgétairequisimplifielaviedetoutlemondenormalement",
+        DEFAULT_SECRET_KEY,
     )
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH", str(10 * 1024 * 1024)))
 
     # --- DB -----------------------------------------------------------------
     # Objectif :
