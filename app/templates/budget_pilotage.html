@@ -289,16 +289,16 @@
                       </select>
                       <input name="libelle" value="{{ l.libelle }}">
                       <input name="compte" value="{{ l.compte }}">
-                      <input name="montant_base" type="number" step="0.01" value=\"{{ money_format(l.montant_base or 0) }}\">
-                      <input name="montant_reel" type="number" step="0.01" value=\"{{ money_format(l.montant_reel or 0) }}\">
+                      <input name="montant_base" type="number" step="0.01" value="{{ money_format(l.montant_base or 0) }}">
+                      <input name="montant_reel" type="number" step="0.01" value="{{ money_format(l.montant_reel or 0) }}">
 
                       <div style="grid-column:1 / -1; display:flex; gap:8px; justify-content:flex-end;">
                         <button class="btn" type="submit">Enregistrer</button>
-                        <form method="POST" action="{{ url_for('main.ligne_delete', ligne_id=l.id) }}" style="margin:0;" onsubmit="return confirm('Supprimer cette ligne ?');">
-                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                          <button class="btn danger" type="submit">Supprimer</button>
-                        </form>
                       </div>
+                    </form>
+                    <form method="POST" action="{{ url_for('main.ligne_delete', ligne_id=l.id) }}" style="margin:8px 0 0 0; display:flex; justify-content:flex-end;" onsubmit="return confirm('Supprimer cette ligne ?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button class="btn danger" type="submit">Supprimer</button>
                     </form>
                   </td>
                 </tr>
