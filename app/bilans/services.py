@@ -6,6 +6,7 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models import Depense, FactureAchat, FactureLigne, LigneBudget, Subvention, InventaireItem
+from app.services.money import money_quantize, money_to_float, money_value
 
 
 @dataclass
@@ -71,7 +72,7 @@ def compute_kpis(year: int, scope: BilansScope) -> Dict[str, float]:
         .filter(Subvention.annee_exercice == year)
     )
     q_dep = _apply_secteur_filter(q_dep, scope, Subvention.secteur)
-    depenses = float(q_dep.scalar() or 0.0)
+    depenses = money_value(q_dep.scalar() or 0)
 
     # Budget disponible = total des lignes "montant_reel" (charges) sur les subventions de l'année
     q_budget = (
@@ -81,7 +82,7 @@ def compute_kpis(year: int, scope: BilansScope) -> Dict[str, float]:
         .filter(Subvention.annee_exercice == year)
     )
     q_budget = _apply_secteur_filter(q_budget, scope, Subvention.secteur)
-    budget = float(q_budget.scalar() or 0.0)
+    budget = money_value(q_budget.scalar() or 0)
 
     # À ventiler = somme des lignes de facture marquées a_ventiler sur l'année (date facture)
     q_av = (
@@ -92,7 +93,7 @@ def compute_kpis(year: int, scope: BilansScope) -> Dict[str, float]:
         .filter(FactureAchat.date_facture < end)
     )
     q_av = _apply_secteur_filter(q_av, scope, FactureLigne.secteur)
-    a_ventiler = float(q_av.scalar() or 0.0)
+    a_ventiler = money_value(q_av.scalar() or 0)
 
     # Nombre factures (sur l'année)
     q_fact = (
@@ -103,15 +104,15 @@ def compute_kpis(year: int, scope: BilansScope) -> Dict[str, float]:
     q_fact = _apply_secteur_filter(q_fact, scope, FactureAchat.secteur_principal)
     nb_factures = int(q_fact.scalar() or 0)
 
-    taux_exec = (depenses / budget * 100.0) if budget > 0 else 0.0
-    reste = budget - depenses
+    taux_exec = float((depenses / budget * 100) if budget > 0 else 0)
+    reste = money_quantize(budget - depenses)
 
     return {
-        "depenses": round(depenses, 2),
-        "budget": round(budget, 2),
+        "depenses": money_to_float(depenses),
+        "budget": money_to_float(budget),
         "taux_exec": round(taux_exec, 1),
-        "reste": round(reste, 2),
-        "a_ventiler": round(a_ventiler, 2),
+        "reste": money_to_float(reste),
+        "a_ventiler": money_to_float(a_ventiler),
         "nb_factures": nb_factures,
     }
 
@@ -146,7 +147,7 @@ def compute_depenses_mensuelles(year: int, scope: BilansScope) -> List[Dict[str,
     q = _apply_secteur_filter(q, scope, Subvention.secteur)
     q = q.group_by(month_expr).order_by(month_expr)
 
-    by_month = {int(m): float(t or 0.0) for m, t in q.all() if m is not None}
+    by_month = {int(m): money_to_float(t or 0) for m, t in q.all() if m is not None}
     out = []
     for m in range(1, 13):
         out.append({"mois": m, "total": round(by_month.get(m, 0.0), 2)})
@@ -167,7 +168,7 @@ def compute_depenses_par_secteur(year: int, scope: BilansScope) -> List[Dict[str
         .order_by(func.coalesce(func.sum(Depense.montant), 0.0).desc())
     )
     q = _apply_secteur_filter(q, scope, Subvention.secteur)
-    return [{"secteur": s, "total": round(float(t or 0.0), 2)} for s, t in q.all()]
+    return [{"secteur": s, "total": money_to_float(t or 0)} for s, t in q.all()]
 
 
 def compute_alertes(year: int, scope: BilansScope, seuil_ventiler: float = 500.0) -> List[Dict[str, str]]:
@@ -254,7 +255,7 @@ def list_subventions(year: int, scope: BilansScope) -> List[Dict[str, object]]:
             "id": int(i),
             "nom": n,
             "secteur": s,
-            "montant_attribue": float(ma or 0.0),
+            "montant_attribue": money_to_float(ma or 0),
         }
         for (i, n, s, ma) in q.all()
     ]
@@ -294,18 +295,18 @@ def compute_bilan_secteur(year: int, secteur: str, scope: BilansScope) -> Dict[s
     )
     lignes = []
     for lid, compte, libelle, montant_reel, engage in q_lines.all():
-        montant_reel = float(montant_reel or 0.0)
-        engage = float(engage or 0.0)
-        reste = montant_reel - engage
+        montant_reel = money_value(montant_reel or 0)
+        engage = money_value(engage or 0)
+        reste = money_quantize(montant_reel - engage)
         lignes.append(
             {
                 "id": int(lid),
                 "compte": compte,
                 "libelle": libelle,
-                "montant_reel": round(montant_reel, 2),
-                "engage": round(engage, 2),
-                "reste": round(reste, 2),
-                "taux": round((engage / montant_reel * 100.0) if montant_reel > 0 else 0.0, 1),
+                "montant_reel": money_to_float(montant_reel),
+                "engage": money_to_float(engage),
+                "reste": money_to_float(reste),
+                "taux": round((float(engage / montant_reel * 100) if montant_reel > 0 else 0), 1),
             }
         )
 
@@ -341,7 +342,7 @@ def compute_bilan_secteur(year: int, secteur: str, scope: BilansScope) -> Dict[s
                 "date": dte.strftime("%d/%m/%Y") if hasattr(dte, "strftime") and dte else "",
                 "fournisseur": four or "",
                 "libelle": lib or "",
-                "montant": round(float(mnt or 0.0), 2),
+                "montant": money_to_float(mnt or 0),
                 "reference": ref or "",
             }
         )
@@ -363,9 +364,9 @@ def compute_bilan_subvention(year: int, subvention_id: int, scope: BilansScope) 
         return {}
 
     # Montant accordé : montant_attribue (sinon fallback sur budget réel des lignes)
-    montant_accorde = float(sub.montant_attribue or 0.0)
+    montant_accorde = money_value(sub.montant_attribue or 0)
     if montant_accorde <= 0:
-        montant_accorde = float(sub.total_reel_lignes or 0.0)
+        montant_accorde = money_value(sub.total_reel_lignes or 0)
 
     # Dépenses imputées (charges)
     q_dep = (
@@ -376,9 +377,9 @@ def compute_bilan_subvention(year: int, subvention_id: int, scope: BilansScope) 
         .filter(Depense.statut == "valide")
         .filter(func.coalesce(LigneBudget.nature, "charge") == "charge")
     )
-    depenses = float(q_dep.scalar() or 0.0)
-    taux = (depenses / montant_accorde * 100.0) if montant_accorde > 0 else 0.0
-    ecart = montant_accorde - depenses
+    depenses = money_value(q_dep.scalar() or 0)
+    taux = float((depenses / montant_accorde * 100) if montant_accorde > 0 else 0)
+    ecart = money_quantize(montant_accorde - depenses)
 
     # Liste des dépenses (détails)
     date_expr = func.coalesce(FactureAchat.date_facture, Depense.date_paiement, func.date(Depense.created_at))
@@ -412,7 +413,7 @@ def compute_bilan_subvention(year: int, subvention_id: int, scope: BilansScope) 
                 "date": dte.strftime("%d/%m/%Y") if hasattr(dte, "strftime") and dte else "",
                 "fournisseur": four or "",
                 "libelle": lib or "",
-                "montant": round(float(mnt or 0.0), 2),
+                "montant": money_to_float(mnt or 0),
                 "reference": ref or "",
                 "compte": compte or "",
                 "ligne": ligne_lib or "",
@@ -442,7 +443,7 @@ def compute_bilan_subvention(year: int, subvention_id: int, scope: BilansScope) 
                 "designation": des or "",
                 "etat": etat or "",
                 "localisation": loc or "",
-                "valeur": round(float(val or 0.0), 2) if val is not None else "",
+                "valeur": money_to_float(val or 0) if val is not None else "",
             }
         )
 
@@ -453,10 +454,10 @@ def compute_bilan_subvention(year: int, subvention_id: int, scope: BilansScope) 
             "secteur": sub.secteur,
         },
         "kpis": {
-            "montant_accorde": round(float(montant_accorde or 0.0), 2),
-            "depenses": round(depenses, 2),
+            "montant_accorde": money_to_float(montant_accorde),
+            "depenses": money_to_float(depenses),
             "taux": round(taux, 1),
-            "ecart": round(ecart, 2),
+            "ecart": money_to_float(ecart),
         },
         "depenses": depenses_list,
         "materiel": materiel,
@@ -519,12 +520,12 @@ def compute_qualite_gestion(year: int, scope: BilansScope) -> Dict[str, object]:
     return {
         "a_ventiler": {
             "nb": int(nb_av or 0),
-            "montant": round(float(mt_av or 0.0), 2),
+        "montant": money_to_float(mt_av or 0),
             "age_moyen_jours": int(round(float(avg_days or 0.0))) if avg_days is not None else 0,
         },
         "hors_subvention": {
             "nb": int(nb_hs or 0),
-            "montant": round(float(mt_hs or 0.0), 2),
+        "montant": money_to_float(mt_hs or 0),
         },
         "factures": {
             "sans_inventaire": int(missing_inv),
@@ -568,7 +569,7 @@ def compute_stats_inventaire(year: int, scope: BilansScope) -> Dict[str, object]
 
     return {
         "nb_items": int(nb_items or 0),
-        "valeur": round(float(valeur or 0.0), 2),
+        "valeur": money_to_float(valeur or 0),
         "repartition": repartition,
         "qualite": {
             "sans_localisation": sans_localisation,

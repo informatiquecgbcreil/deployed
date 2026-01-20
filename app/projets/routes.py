@@ -1,9 +1,17 @@
 import os
 import json
 from datetime import datetime
+from decimal import Decimal
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app, send_from_directory
 from flask_login import login_required, current_user
 from app.rbac import require_perm, can, can_access_secteur
+from app.services.money import (
+    money_quantize,
+    money_sum,
+    money_to_float,
+    money_value,
+    parse_money,
+)
 from werkzeug.utils import secure_filename
 
 from app.extensions import db
@@ -43,22 +51,22 @@ def _budget_stats(projet_id: int) -> dict:
     charges = ChargeProjet.query.filter_by(projet_id=projet_id).all()
     produits = ProduitProjet.query.filter_by(projet_id=projet_id).all()
 
-    total_charges = float(sum((c.montant_previsionnel or 0) for c in charges))
-    total_charges_ventile = float(sum((c.ventile or 0) for c in charges))
-    total_charges_reste = max(0.0, total_charges - total_charges_ventile)
+    total_charges = money_sum(c.montant_previsionnel for c in charges)
+    total_charges_ventile = money_sum(c.ventile for c in charges)
+    total_charges_reste = money_quantize(max(Decimal("0.00"), total_charges - total_charges_ventile))
 
-    total_demande = float(sum((p.montant_demande or 0) for p in produits))
-    total_accorde = float(sum((p.montant_accorde or 0) for p in produits))
-    total_recu = float(sum((p.montant_recu or 0) for p in produits))
+    total_demande = money_sum(p.montant_demande for p in produits)
+    total_accorde = money_sum(p.montant_accorde for p in produits)
+    total_recu = money_sum(p.montant_recu for p in produits)
 
-    total_produits_ventile = float(sum((p.ventile or 0) for p in produits))
-    total_produits_reste = float(sum((p.reste_a_ventiler or 0) for p in produits))
+    total_produits_ventile = money_sum(p.ventile for p in produits)
+    total_produits_reste = money_sum(p.reste_a_ventiler for p in produits)
 
     # Base "produits" utilisée pour donner du contexte (reçu > accordé > demandé)
     base_produits = total_recu if total_recu > 0 else (total_accorde if total_accorde > 0 else total_demande)
     base_label = "reçu" if total_recu > 0 else ("accordé" if total_accorde > 0 else "demandé")
 
-    def pct(a: float, b: float) -> int:
+    def pct(a: Decimal, b: Decimal) -> int:
         if b <= 0:
             return 0
         v = int(round((a / b) * 100))
@@ -548,7 +556,7 @@ def projet_budget_charges(projet_id):
         libelle = (request.form.get("libelle") or "").strip()
         bloc = (request.form.get("bloc") or "directe").strip()
         code_plan = (request.form.get("code_plan") or "60").strip()
-        montant = float(request.form.get("montant_previsionnel") or 0)
+        montant = parse_money(request.form.get("montant_previsionnel"))
 
         if not libelle:
             flash("Libellé obligatoire.", "warning")
@@ -559,7 +567,7 @@ def projet_budget_charges(projet_id):
                 bloc=bloc,
                 code_plan=code_plan,
                 montant_previsionnel=montant,
-                montant_reel=float(request.form.get("montant_reel") or 0),
+                montant_reel=parse_money(request.form.get("montant_reel")),
                 commentaire=(request.form.get("commentaire") or "").strip() or None,
             )
             db.session.add(c)
@@ -590,8 +598,8 @@ def projet_budget_charge_edit(projet_id, charge_id):
         charge.libelle = (request.form.get("libelle") or "").strip()
         charge.bloc = (request.form.get("bloc") or "directe").strip()
         charge.code_plan = (request.form.get("code_plan") or "60").strip()
-        charge.montant_previsionnel = float(request.form.get("montant_previsionnel") or 0)
-        charge.montant_reel = float(request.form.get("montant_reel") or 0)
+        charge.montant_previsionnel = parse_money(request.form.get("montant_previsionnel"))
+        charge.montant_reel = parse_money(request.form.get("montant_reel"))
         charge.commentaire = (request.form.get("commentaire") or "").strip() or None
         db.session.commit()
         flash("Charge mise à jour.", "success")
@@ -634,9 +642,9 @@ def projet_budget_produits(projet_id):
         financeur = (request.form.get("financeur") or "").strip()
         categorie = (request.form.get("categorie") or "autre").strip()
         statut = (request.form.get("statut") or "prevu").strip()
-        demande = float(request.form.get("montant_demande") or 0)
-        accorde = float(request.form.get("montant_accorde") or 0)
-        recu = float(request.form.get("montant_recu") or 0)
+        demande = parse_money(request.form.get("montant_demande"))
+        accorde = parse_money(request.form.get("montant_accorde"))
+        recu = parse_money(request.form.get("montant_recu"))
 
         if not financeur:
             flash("Financeur obligatoire.", "warning")
@@ -680,9 +688,9 @@ def projet_budget_produit_edit(projet_id, produit_id):
         produit.financeur = (request.form.get("financeur") or "").strip()
         produit.categorie = (request.form.get("categorie") or "autre").strip()
         produit.statut = (request.form.get("statut") or "prevu").strip()
-        produit.montant_demande = float(request.form.get("montant_demande") or 0)
-        produit.montant_accorde = float(request.form.get("montant_accorde") or 0)
-        produit.montant_recu = float(request.form.get("montant_recu") or 0)
+        produit.montant_demande = parse_money(request.form.get("montant_demande"))
+        produit.montant_accorde = parse_money(request.form.get("montant_accorde"))
+        produit.montant_recu = parse_money(request.form.get("montant_recu"))
         produit.reference_dossier = (request.form.get("reference_dossier") or "").strip() or None
         produit.commentaire = (request.form.get("commentaire") or "").strip() or None
         db.session.commit()
@@ -734,37 +742,63 @@ def projet_budget_ventilation(projet_id):
         # UX/sécurité : on refuse les ventilations incohérentes (somme > charge, somme > financeur)
 
         # 1) Lire les valeurs du formulaire en mémoire
-        new_vals: dict[tuple[int, int], float] = {}
+        new_vals: dict[tuple[int, int], Decimal] = {}
         for c in charges:
             for p in produits:
                 key = f"v_{c.id}_{p.id}"
                 if key not in request.form:
                     continue
-                raw = (request.form.get(key) or "").strip().replace(",", ".")
-                try:
-                    val = float(raw) if raw else 0.0
-                except ValueError:
-                    val = 0.0
+                raw = (request.form.get(key) or "").strip()
+                val = parse_money(raw) if raw else Decimal("0.00")
                 if val < 0:
-                    val = 0.0
+                    val = Decimal("0.00")
                 new_vals[(c.id, p.id)] = val
 
         # 2) Contrôles par charge
         errors = []
         for c in charges:
-            s = sum((new_vals.get((c.id, p.id), float(vmap.get((c.id, p.id)).montant_ventile or 0)) if vmap.get((c.id, p.id)) else 0.0) for p in produits)
-            max_c = float(c.montant_previsionnel or 0)
+            s = sum(
+                [
+                    new_vals.get((c.id, p.id), money_value(vmap.get((c.id, p.id)).montant_ventile or 0))
+                    if vmap.get((c.id, p.id))
+                    else Decimal("0.00")
+                    for p in produits
+                ],
+                Decimal("0.00"),
+            )
+            max_c = money_value(c.montant_previsionnel or 0)
             # tolérance 1 centime
-            if max_c > 0 and s - max_c > 0.01:
-                errors.append(f"Charge '{c.libelle}' : {s:.2f}€ ventilés pour {max_c:.2f}€ prévus")
+            if max_c > 0 and s - max_c > Decimal("0.01"):
+                errors.append(
+                    f"Charge '{c.libelle}' : {money_to_float(s):.2f}€ ventilés pour {money_to_float(max_c):.2f}€ prévus"
+                )
 
         # 3) Contrôles par produit/financeur
         for p in produits:
-            s = sum((new_vals.get((c.id, p.id), float(vmap.get((c.id, p.id)).montant_ventile or 0)) if vmap.get((c.id, p.id)) else 0.0) for c in charges)
+            s = sum(
+                [
+                    new_vals.get((c.id, p.id), money_value(vmap.get((c.id, p.id)).montant_ventile or 0))
+                    if vmap.get((c.id, p.id))
+                    else Decimal("0.00")
+                    for c in charges
+                ],
+                Decimal("0.00"),
+            )
             # base de comparaison : reçu > accordé > demandé
-            base = float(p.montant_recu or 0) if float(p.montant_recu or 0) > 0 else (float(p.montant_accorde or 0) if float(p.montant_accorde or 0) > 0 else float(p.montant_demande or 0))
-            if base > 0 and s - base > 0.01:
-                errors.append(f"Financeur '{p.financeur}' : {s:.2f}€ ventilés pour {base:.2f}€ ({'reçu' if float(p.montant_recu or 0) > 0 else ('accordé' if float(p.montant_accorde or 0) > 0 else 'demandé')})")
+            base = (
+                money_value(p.montant_recu or 0)
+                if money_value(p.montant_recu or 0) > 0
+                else (
+                    money_value(p.montant_accorde or 0)
+                    if money_value(p.montant_accorde or 0) > 0
+                    else money_value(p.montant_demande or 0)
+                )
+            )
+            if base > 0 and s - base > Decimal("0.01"):
+                errors.append(
+                    f"Financeur '{p.financeur}' : {money_to_float(s):.2f}€ ventilés pour {money_to_float(base):.2f}€ "
+                    f"({'reçu' if money_value(p.montant_recu or 0) > 0 else ('accordé' if money_value(p.montant_accorde or 0) > 0 else 'demandé')})"
+                )
 
         if errors:
             flash("Ventilation refusée : incohérence détectée.", "danger")
@@ -790,7 +824,7 @@ def projet_budget_ventilation(projet_id):
                     continue
 
                 if cur:
-                    if float(cur.montant_ventile or 0) != val:
+                    if money_value(cur.montant_ventile or 0) != money_quantize(val):
                         cur.montant_ventile = val
                         changed += 1
                 else:
@@ -804,7 +838,7 @@ def projet_budget_ventilation(projet_id):
         return redirect(url_for("projets.projet_budget_ventilation", projet_id=projet.id))
 
     # rebuild vmap with numbers for template
-    vvals = {(cid, pid): float(v.montant_ventile or 0) for (cid, pid), v in vmap.items()}
+    vvals = {(cid, pid): money_to_float(v.montant_ventile or 0) for (cid, pid), v in vmap.items()}
     return render_template(
         "projets_budget_ventilation.html",
         projet=projet,
@@ -829,12 +863,12 @@ def projet_budget_synthese(projet_id):
     alertes = []
     # charges non financées
     for c in charges:
-        if float(c.reste_a_financer or 0) > 0.01:
-            alertes.append(f"Charge non financée : {c.libelle} (reste {c.reste_a_financer:.2f}€)")
+        if money_value(c.reste_a_financer or 0) > Decimal("0.01"):
+            alertes.append(f"Charge non financée : {c.libelle} (reste {money_to_float(c.reste_a_financer):.2f}€)")
     # produits non ventilés
     for p in produits:
-        if float(p.reste_a_ventiler or 0) > 0.01:
-            alertes.append(f"Produit non ventilé : {p.financeur} (reste {p.reste_a_ventiler:.2f}€)")
+        if money_value(p.reste_a_ventiler or 0) > Decimal("0.01"):
+            alertes.append(f"Produit non ventilé : {p.financeur} (reste {money_to_float(p.reste_a_ventiler):.2f}€)")
 
     return render_template(
         "projets_budget_synthese.html",
