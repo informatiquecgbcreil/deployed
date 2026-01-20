@@ -1,8 +1,10 @@
 from datetime import datetime
 from datetime import date
+from decimal import Decimal
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db
+from app.services.money import money_diff, money_sum, money_value
 
 # ---------- USERS ----------
 class User(db.Model):
@@ -256,27 +258,27 @@ class Projet(db.Model):
 
     @property
     def total_demande(self):
-        return round(sum(float(sp.subvention.montant_demande or 0) for sp in self.subventions), 2)
+        return money_sum(sp.subvention.montant_demande for sp in self.subventions)
 
     @property
     def total_attribue(self):
-        return round(sum(float(sp.subvention.montant_attribue or 0) for sp in self.subventions), 2)
+        return money_sum(sp.subvention.montant_attribue for sp in self.subventions)
 
     @property
     def total_recu(self):
-        return round(sum(float(sp.subvention.montant_recu or 0) for sp in self.subventions), 2)
+        return money_sum(sp.subvention.montant_recu for sp in self.subventions)
 
     @property
     def total_reel_lignes(self):
-        return round(sum(float(sp.subvention.total_reel_lignes or 0) for sp in self.subventions), 2)
+        return money_sum(sp.subvention.total_reel_lignes for sp in self.subventions)
 
     @property
     def total_engage(self):
-        return round(sum(float(sp.subvention.total_engage or 0) for sp in self.subventions), 2)
+        return money_sum(sp.subvention.total_engage for sp in self.subventions)
 
     @property
     def total_reste(self):
-        return round(sum(float(sp.subvention.total_reste or 0) for sp in self.subventions), 2)
+        return money_sum(sp.subvention.total_reste for sp in self.subventions)
 
 
     # -----------------------------
@@ -284,28 +286,28 @@ class Projet(db.Model):
     # -----------------------------
     @property
     def total_charges_previsionnel(self):
-        return round(sum(float(c.montant_previsionnel or 0) for c in self.charges_projet), 2)
+        return money_sum(c.montant_previsionnel for c in self.charges_projet)
 
     @property
     def total_charges_reel(self):
-        return round(sum(float(c.montant_reel or 0) for c in self.charges_projet), 2)
+        return money_sum(c.montant_reel for c in self.charges_projet)
 
     @property
     def total_produits_demandes(self):
-        return round(sum(float(p.montant_demande or 0) for p in self.produits_projet), 2)
+        return money_sum(p.montant_demande for p in self.produits_projet)
 
     @property
     def total_produits_accordes(self):
-        return round(sum(float(p.montant_accorde or 0) for p in self.produits_projet), 2)
+        return money_sum(p.montant_accorde for p in self.produits_projet)
 
     @property
     def total_produits_recus(self):
-        return round(sum(float(p.montant_recu or 0) for p in self.produits_projet), 2)
+        return money_sum(p.montant_recu for p in self.produits_projet)
 
     @property
     def reste_a_financer(self):
         # basé sur l'accordé (et non la demande)
-        return round(float(self.total_charges_previsionnel or 0) - float(self.total_produits_accordes or 0), 2)
+        return money_diff(self.total_charges_previsionnel, self.total_produits_accordes)
 
 
 
@@ -322,8 +324,8 @@ class ChargeProjet(db.Model):
 
     libelle = db.Column(db.String(255), nullable=False)
 
-    montant_previsionnel = db.Column(db.Float, default=0.0)
-    montant_reel = db.Column(db.Float, default=0.0)
+    montant_previsionnel = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_reel = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
 
     commentaire = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -334,21 +336,21 @@ class ChargeProjet(db.Model):
 
     @property
     def ventile(self):
-        return round(sum(float(v.montant_ventile or 0) for v in self.ventilations), 2)
+        return money_sum(v.montant_ventile for v in self.ventilations)
 
     @property
     def reste_a_financer(self):
-        return round(float(self.montant_previsionnel or 0) - float(self.ventile or 0), 2)
+        return money_diff(self.montant_previsionnel, self.ventile)
 
     @property
     def engage(self):
         # engagement réel via les dépenses rattachées à cette charge
-        return round(sum(float(d.montant or 0) for d in self.depenses if not d.est_supprimee), 2)
+        return money_sum(d.montant for d in self.depenses if not d.est_supprimee)
 
     @property
     def reste_a_engager(self):
-        base = float(self.montant_reel or 0) if float(self.montant_reel or 0) > 0 else float(self.montant_previsionnel or 0)
-        return round(base - float(self.engage or 0), 2)
+        base = self.montant_reel if money_value(self.montant_reel) > 0 else self.montant_previsionnel
+        return money_diff(base, self.engage)
 
 
 class ProduitProjet(db.Model):
@@ -360,9 +362,9 @@ class ProduitProjet(db.Model):
     categorie = db.Column(db.String(50), nullable=False, default="autre")  # etat/region/departement/commune/caf/europe/prive/autofinancement/...
     statut = db.Column(db.String(30), nullable=False, default="prevu")  # prevu/demande/accorde/partiel/refuse
 
-    montant_demande = db.Column(db.Float, default=0.0)
-    montant_accorde = db.Column(db.Float, default=0.0)
-    montant_recu = db.Column(db.Float, default=0.0)
+    montant_demande = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_accorde = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_recu = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
 
     reference_dossier = db.Column(db.String(120), nullable=True)
     commentaire = db.Column(db.Text, nullable=True)
@@ -373,11 +375,11 @@ class ProduitProjet(db.Model):
 
     @property
     def ventile(self):
-        return round(sum(float(v.montant_ventile or 0) for v in self.ventilations), 2)
+        return money_sum(v.montant_ventile for v in self.ventilations)
 
     @property
     def reste_a_ventiler(self):
-        return round(float(self.montant_accorde or 0) - float(self.ventile or 0), 2)
+        return money_diff(self.montant_accorde, self.ventile)
 
 
 class VentilationProjet(db.Model):
@@ -385,7 +387,7 @@ class VentilationProjet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     charge_id = db.Column(db.Integer, db.ForeignKey("charge_projet.id", ondelete="CASCADE"), nullable=False)
     produit_id = db.Column(db.Integer, db.ForeignKey("produit_projet.id", ondelete="CASCADE"), nullable=False)
-    montant_ventile = db.Column(db.Float, default=0.0)
+    montant_ventile = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     charge = db.relationship("ChargeProjet", back_populates="ventilations")
@@ -457,9 +459,9 @@ class Subvention(db.Model):
     secteur = db.Column(db.String(80), nullable=False)
     annee_exercice = db.Column(db.Integer, nullable=False, default=2025)
 
-    montant_demande = db.Column(db.Float, default=0.0)
-    montant_attribue = db.Column(db.Float, default=0.0)
-    montant_recu = db.Column(db.Float, default=0.0)
+    montant_demande = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_attribue = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_recu = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
 
     est_archive = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -470,38 +472,38 @@ class Subvention(db.Model):
     @property
     def total_base_lignes(self):
         # compat: total des CHARGES (lignes nature=charge)
-        return round(sum(float(l.montant_base or 0) for l in self.lignes if getattr(l, "nature", "charge") == "charge"), 2)
+        return money_sum(l.montant_base for l in self.lignes if getattr(l, "nature", "charge") == "charge")
 
     @property
     def total_reel_lignes(self):
         # compat: total des CHARGES (lignes nature=charge)
-        return round(sum(float(l.montant_reel or 0) for l in self.lignes if getattr(l, "nature", "charge") == "charge"), 2)
+        return money_sum(l.montant_reel for l in self.lignes if getattr(l, "nature", "charge") == "charge")
 
 
     @property
     def total_base_produits(self):
-        return round(sum(float(l.montant_base or 0) for l in self.lignes if getattr(l, "nature", "charge") == "produit"), 2)
+        return money_sum(l.montant_base for l in self.lignes if getattr(l, "nature", "charge") == "produit")
 
     @property
     def total_reel_produits(self):
-        return round(sum(float(l.montant_reel or 0) for l in self.lignes if getattr(l, "nature", "charge") == "produit"), 2)
+        return money_sum(l.montant_reel for l in self.lignes if getattr(l, "nature", "charge") == "produit")
 
     @property
     def solde_base(self):
         # Produits - Charges
-        return round(float(self.total_base_produits or 0) - float(self.total_base_lignes or 0), 2)
+        return money_diff(self.total_base_produits, self.total_base_lignes)
 
     @property
     def solde_reel(self):
         # Produits - Charges
-        return round(float(self.total_reel_produits or 0) - float(self.total_reel_lignes or 0), 2)
+        return money_diff(self.total_reel_produits, self.total_reel_lignes)
     @property
     def total_engage(self):
-        return round(sum(float(l.engage or 0) for l in self.lignes if getattr(l, "nature", "charge") == "charge"), 2)
+        return money_sum(l.engage for l in self.lignes if getattr(l, "nature", "charge") == "charge")
 
     @property
     def total_reste(self):
-        return round(sum(float(l.reste or 0) for l in self.lignes if getattr(l, "nature", "charge") == "charge"), 2)
+        return money_sum(l.reste for l in self.lignes if getattr(l, "nature", "charge") == "charge")
 
 
 class LigneBudget(db.Model):
@@ -514,8 +516,8 @@ class LigneBudget(db.Model):
     compte = db.Column(db.String(20), nullable=False, default="60")
     libelle = db.Column(db.String(200), nullable=False)
 
-    montant_base = db.Column(db.Float, default=0.0)
-    montant_reel = db.Column(db.Float, default=0.0)
+    montant_base = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_reel = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -525,15 +527,15 @@ class LigneBudget(db.Model):
     def engage(self):
         # engage / reste n'ont de sens que pour les CHARGES
         if getattr(self, "nature", "charge") != "charge":
-            return 0.0
+            return Decimal("0.00")
         # BLINDAGE: on ne compte pas les dépenses soft-delete
-        return round(sum(float(d.montant or 0) for d in self.depenses if not d.est_supprimee), 2)
+        return money_sum(d.montant for d in self.depenses if not d.est_supprimee)
 
     @property
     def reste(self):
         if getattr(self, "nature", "charge") != "charge":
-            return 0.0
-        return round(float(self.montant_reel or 0) - float(self.engage or 0), 2)
+            return Decimal("0.00")
+        return money_diff(self.montant_reel, self.engage)
 
 
 class Depense(db.Model):
@@ -546,7 +548,7 @@ class Depense(db.Model):
     facture_ligne_id = db.Column(db.Integer, db.ForeignKey("facture_ligne.id", ondelete="SET NULL"), nullable=True)
 
     libelle = db.Column(db.String(255), nullable=False)
-    montant = db.Column(db.Float, default=0.0)
+    montant = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
 
     # infos finance-friendly (non obligatoires pour l’instant)
     fournisseur = db.Column(db.String(180), nullable=True)
@@ -601,7 +603,7 @@ class FactureAchat(db.Model):
 
     @property
     def total(self):
-        return round(sum(float(l.montant_ligne or 0) for l in self.lignes), 2)
+        return money_sum(l.montant_ligne for l in self.lignes)
 
 
 class FactureLigne(db.Model):
@@ -616,8 +618,8 @@ class FactureLigne(db.Model):
 
     libelle = db.Column(db.String(255), nullable=False)
     quantite = db.Column(db.Integer, nullable=False, default=1)
-    prix_unitaire = db.Column(db.Float, default=0.0)
-    montant_ligne = db.Column(db.Float, default=0.0)
+    prix_unitaire = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
+    montant_ligne = db.Column(db.Numeric(12, 2), default=Decimal("0.00"))
 
     ligne_budget_id = db.Column(db.Integer, db.ForeignKey("ligne_budget.id"), nullable=True)
     # Nouveau (AAP/Projets) : rattachement direct à une charge projet
@@ -645,7 +647,7 @@ class InventaireItem(db.Model):
     etat = db.Column(db.String(50), nullable=False, default="OK")
     localisation = db.Column(db.String(255), nullable=True)
 
-    valeur_unitaire = db.Column(db.Float, nullable=True)
+    valeur_unitaire = db.Column(db.Numeric(12, 2), nullable=True)
     date_entree = db.Column(db.Date, nullable=True)
     notes = db.Column(db.Text, nullable=True)
 

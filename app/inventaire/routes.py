@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from decimal import Decimal
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, current_app, send_from_directory
 from flask_login import login_required, current_user
@@ -8,6 +9,7 @@ from werkzeug.utils import secure_filename
 from app.extensions import db
 from app.models import Subvention, LigneBudget, Depense, FactureAchat, FactureLigne
 from app.rbac import require_perm, can_access_secteur
+from app.services.money import money_quantize, money_value, parse_money
 
 
 bp = Blueprint("inventaire", __name__, url_prefix="/factures")
@@ -277,12 +279,12 @@ def facture_detail(facture_id):
                 return redirect(url_for("inventaire.facture_detail", facture_id=f.id))
 
             quantite = int(request.form.get("quantite") or 1)
-            prix_unitaire = float(request.form.get("prix_unitaire") or 0)
-            montant_ligne = float(request.form.get("montant_ligne") or 0)
+            prix_unitaire = parse_money(request.form.get("prix_unitaire"))
+            montant_ligne = parse_money(request.form.get("montant_ligne"))
 
             # si montant non fourni, calcule
             if montant_ligne <= 0:
-                montant_ligne = round(float(quantite or 0) * float(prix_unitaire or 0), 2)
+                montant_ligne = money_quantize(Decimal(quantite or 0) * money_value(prix_unitaire))
 
             fl = FactureLigne(
                 facture_id=f.id,
@@ -368,7 +370,7 @@ def facture_validate(facture_id):
             ligne_budget_id=ligne.id,
             facture_ligne_id=fl.id,
             libelle=fl.libelle,
-            montant=float(fl.montant_ligne or 0),
+            montant=money_value(fl.montant_ligne or 0),
             fournisseur=f.fournisseur,
             reference_piece=f.reference_facture,
             date_paiement=f.date_facture,
