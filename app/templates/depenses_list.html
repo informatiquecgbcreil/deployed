@@ -93,7 +93,7 @@
                 <td><strong>{{ s.nom }}</strong><div class="muted">{{ s.secteur }} · {{ s.annee_exercice }}</div></td>
                 <td>{{ l.compte }} · <span class="muted">{{ l.libelle }}</span></td>
                 <td><strong>{{ d.libelle }}</strong></td>
-                <td>{{ "%.2f"|format(d.montant or 0) }}€</td>
+                <td>{{ "%.2f"|format(money_to_float(d.montant or 0)) }}€</td>
                 <td class="muted">{{ d.date_paiement or "" }}</td>
                 <td class="muted">{{ d.type_depense or "" }}</td>
                 <td class="inline">
