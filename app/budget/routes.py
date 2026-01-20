@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from app.extensions import db
 from app.models import Subvention, LigneBudget, Depense, DepenseDocument
 from app.rbac import require_perm, can_access_secteur
+from app.services.money import money_to_float, parse_money
 
 bp = Blueprint("budget", __name__)
 
@@ -60,7 +61,7 @@ def depense_new():
 
 
         libelle = (request.form.get("libelle") or "").strip()
-        montant = float(request.form.get("montant") or 0)
+        montant = parse_money(request.form.get("montant"))
         type_depense = (request.form.get("type_depense") or "Fonctionnement").strip()
 
         date_str = (request.form.get("date_paiement") or "").strip()
@@ -99,7 +100,7 @@ def depense_new():
                     categorie=(request.form.get("inv_categorie") or "").strip() or None,
                     designation=(request.form.get("inv_designation") or libelle).strip() or libelle,
                     quantite=int(request.form.get("inv_quantite") or 1),
-                    valeur_unitaire=(float(request.form.get("inv_valeur_unitaire")) if (request.form.get("inv_valeur_unitaire") or "").strip() else None),
+                    valeur_unitaire=(parse_money(request.form.get("inv_valeur_unitaire")) if (request.form.get("inv_valeur_unitaire") or "").strip() else None),
                     date_entree=date_ref,
                     localisation=(request.form.get("inv_localisation") or "").strip() or None,
                     etat=(request.form.get("inv_etat") or "OK").strip() or "OK",
@@ -136,7 +137,7 @@ def depense_edit(depense_id):
 
         if action == "update":
             dep.libelle = (request.form.get("libelle") or "").strip()
-            dep.montant = float(request.form.get("montant") or 0)
+            dep.montant = parse_money(request.form.get("montant"))
             dep.type_depense = (request.form.get("type_depense") or "Fonctionnement").strip()
 
             date_str = (request.form.get("date_paiement") or "").strip()
@@ -172,9 +173,9 @@ def depense_edit(depense_id):
 
         abort(400)
 
-    alloue = float(ligne.montant_reel or 0)
-    engage = float(ligne.engage or 0)
-    reste = float(ligne.reste or 0)
+    alloue = money_to_float(ligne.montant_reel or 0)
+    engage = money_to_float(ligne.engage or 0)
+    reste = money_to_float(ligne.reste or 0)
     existing_inv = list(getattr(dep, "inventaire_items", []) or [])
 
     return render_template(
@@ -296,4 +297,3 @@ def depenses_list():
         selected_ligne_id=ligne_id,
         deps=deps,
     )
-
