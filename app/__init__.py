@@ -39,8 +39,9 @@ def create_app():
             return fallback
 
     app.jinja_env.globals["safe_url_for"] = safe_url_for
-    from app.services.money import money_to_float
+    from app.services.money import money_to_float, money_format
     app.jinja_env.globals["money_to_float"] = money_to_float
+    app.jinja_env.globals["money_format"] = money_format
 
     @login_manager.user_loader
     def load_user(user_id):

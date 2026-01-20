@@ -47,3 +47,8 @@ def money_diff(left, right) -> Decimal:
 
 def money_to_float(value) -> float:
     return float(money_quantize(value))
+
+
+def money_format(value) -> str:
+    quantized = money_quantize(value)
+    return f"{quantized:.2f}"
