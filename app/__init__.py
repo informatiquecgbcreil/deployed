@@ -6,7 +6,7 @@ from werkzeug.routing import BuildError
 from sqlalchemy import text, inspect
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from config import Config
+from config import Config, DEFAULT_SECRET_KEY
 from app.extensions import db, login_manager, csrf
 from app.models import User
 
@@ -17,6 +17,11 @@ def create_app():
 
     # Instance folder (sqlite db, uploads, etc.)
     os.makedirs(app.instance_path, exist_ok=True)
+
+    if app.config.get("SECRET_KEY") == DEFAULT_SECRET_KEY and not app.debug:
+        app.logger.warning(
+            "SECRET_KEY par défaut détectée. Définis SECRET_KEY via variable d'environnement pour la prod."
+        )
 
     # Extensions
     db.init_app(app)
