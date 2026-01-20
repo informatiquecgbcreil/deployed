@@ -22,15 +22,15 @@
         </div>
         <div class="stack">
           <label>Demandé (€)</label>
-          <input name="montant_demande" type="number" step="0.01" value="{{ produit.montant_demande or 0 }}">
+          <input name="montant_demande" type="number" step="0.01" value="{{ money_to_float(produit.montant_demande or 0) }}">
         </div>
         <div class="stack">
           <label>Accordé (€)</label>
-          <input name="montant_accorde" type="number" step="0.01" value="{{ produit.montant_accorde or 0 }}">
+          <input name="montant_accorde" type="number" step="0.01" value="{{ money_to_float(produit.montant_accorde or 0) }}">
         </div>
         <div class="stack">
           <label>Reçu (€)</label>
-          <input name="montant_recu" type="number" step="0.01" value="{{ produit.montant_recu or 0 }}">
+          <input name="montant_recu" type="number" step="0.01" value="{{ money_to_float(produit.montant_recu or 0) }}">
         </div>
       </div>
 
