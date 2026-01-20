@@ -7,10 +7,10 @@
   </div>
 
   {# ===== KPI / SYNTHÈSE PRODUITS ===== #}
-  {% set total_demande = (budget_stats.total_demande or 0) if budget_stats is defined else 0 %}
-  {% set total_accorde = (budget_stats.total_accorde or 0) if budget_stats is defined else 0 %}
-  {% set total_recu = (budget_stats.total_recu or 0) if budget_stats is defined else 0 %}
-  {% set total_charges = (budget_stats.total_charges or 0) if budget_stats is defined else 0 %}
+  {% set total_demande = money_to_float((budget_stats.total_demande or 0) if budget_stats is defined else 0) %}
+  {% set total_accorde = money_to_float((budget_stats.total_accorde or 0) if budget_stats is defined else 0) %}
+  {% set total_recu = money_to_float((budget_stats.total_recu or 0) if budget_stats is defined else 0) %}
+  {% set total_charges = money_to_float((budget_stats.total_charges or 0) if budget_stats is defined else 0) %}
 
   {% set pct_accorde_sur_charges = (total_accorde / total_charges * 100) if total_charges else 0 %}
   {% set pct_recu_sur_accorde = (total_recu / total_accorde * 100) if total_accorde else 0 %}
@@ -178,11 +178,11 @@
         </thead>
         <tbody>
         {% for p in produits %}
-          {% set d = (p.montant_demande or 0) %}
-          {% set a = (p.montant_accorde or 0) %}
-          {% set r = (p.montant_recu or 0) %}
-          {% set v = (p.ventile or 0) %}
-          {% set rv = (p.reste_a_ventiler or 0) %}
+          {% set d = money_to_float(p.montant_demande or 0) %}
+          {% set a = money_to_float(p.montant_accorde or 0) %}
+          {% set r = money_to_float(p.montant_recu or 0) %}
+          {% set v = money_to_float(p.ventile or 0) %}
+          {% set rv = money_to_float(p.reste_a_ventiler or 0) %}
           {% set pct_v = (v / a * 100) if a else (v / d * 100 if d else 0) %}
 
           {% set statut = (p.statut or 'prevu') %}

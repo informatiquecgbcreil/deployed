@@ -6,7 +6,7 @@ from werkzeug.routing import BuildError
 from sqlalchemy import text, inspect
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
-from config import Config
+from config import Config, DEFAULT_SECRET_KEY
 from app.extensions import db, login_manager, csrf
 from app.models import User
 
@@ -18,6 +18,11 @@ def create_app():
     # Instance folder (sqlite db, uploads, etc.)
     os.makedirs(app.instance_path, exist_ok=True)
 
+    if app.config.get("SECRET_KEY") == DEFAULT_SECRET_KEY and not app.debug:
+        raise RuntimeError(
+            "SECRET_KEY par défaut détectée. Définis SECRET_KEY via variable d'environnement pour la prod."
+        )
+
     # Extensions
     db.init_app(app)
     login_manager.init_app(app)
@@ -25,7 +30,7 @@ def create_app():
     login_manager.login_view = "auth.login"
 
     # ------------------------------------------------------------------
-    # Jinja helper: safe_url_for
+    # Jinja helpers
     # ------------------------------------------------------------------
     def safe_url_for(endpoint: str, fallback: str = "#", **values) -> str:
         try:
@@ -34,6 +39,8 @@ def create_app():
             return fallback
 
     app.jinja_env.globals["safe_url_for"] = safe_url_for
+    from app.services.money import money_to_float
+    app.jinja_env.globals["money_to_float"] = money_to_float
 
     @login_manager.user_loader
     def load_user(user_id):
