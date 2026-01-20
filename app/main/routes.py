@@ -58,7 +58,20 @@ from flask_login import login_required, current_user
 from app.rbac import require_perm, can, can_access_secteur
 
 from app.extensions import db
-from app.models import Subvention, LigneBudget, Depense, Projet, SubventionProjet, AtelierActivite, SessionActivite, PresenceActivite, ProjetAtelier, ProjetIndicateur
+from app.models import (
+    Subvention,
+    LigneBudget,
+    Depense,
+    Projet,
+    SubventionProjet,
+    AtelierActivite,
+    SessionActivite,
+    PresenceActivite,
+    ProjetAtelier,
+    ProjetIndicateur,
+    ChargeProjet,
+    ProduitProjet,
+)
 from app.services.dashboard_service import build_dashboard_context
 from app.services.money import (
     money_quantize,
@@ -311,6 +324,78 @@ def subvention_pilotage(subvention_id):
         theor_attribue=theor_attribue,
         warnings=warnings
     )
+
+
+@bp.route("/subvention/<int:subvention_id>/sync-projet", methods=["POST"])
+@login_required
+@require_perm("subventions:edit")
+def subvention_sync_projet(subvention_id):
+    sub = Subvention.query.get_or_404(subvention_id)
+    if not can_see_secteur(sub.secteur):
+        abort(403)
+
+    projet_id = int(request.form.get("projet_id") or 0)
+    new_projet_name = (request.form.get("new_projet_name") or "").strip()
+    replace_lines = bool(request.form.get("replace_lines"))
+
+    projet = None
+    if new_projet_name:
+        if not can("projets:edit"):
+            abort(403)
+        projet = Projet(
+            nom=new_projet_name,
+            secteur=sub.secteur,
+            description="Créé depuis une subvention (import AAP).",
+        )
+        db.session.add(projet)
+        db.session.flush()
+    elif projet_id:
+        projet = Projet.query.get_or_404(projet_id)
+        if not can_see_secteur(projet.secteur) or projet.secteur != sub.secteur:
+            abort(403)
+    else:
+        flash("Choisis un projet existant ou saisis un nouveau projet.", "warning")
+        return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
+
+    if replace_lines:
+        for l in list(sub.lignes):
+            db.session.delete(l)
+        db.session.flush()
+
+    charges = ChargeProjet.query.filter_by(projet_id=projet.id).all()
+    produits = ProduitProjet.query.filter_by(projet_id=projet.id).all()
+
+    for c in charges:
+        db.session.add(
+            LigneBudget(
+                subvention_id=sub.id,
+                nature="charge",
+                compte=(c.code_plan or "60").strip(),
+                libelle=c.libelle,
+                montant_base=money_value(c.montant_previsionnel),
+                montant_reel=money_value(c.montant_reel),
+            )
+        )
+
+    for p in produits:
+        db.session.add(
+            LigneBudget(
+                subvention_id=sub.id,
+                nature="produit",
+                compte="70",
+                libelle=f"{p.financeur} ({p.categorie})",
+                montant_base=money_value(p.montant_demande),
+                montant_reel=money_value(p.montant_recu),
+            )
+        )
+
+    link = SubventionProjet.query.filter_by(projet_id=projet.id, subvention_id=sub.id).first()
+    if not link:
+        db.session.add(SubventionProjet(projet_id=projet.id, subvention_id=sub.id))
+
+    db.session.commit()
+    flash("AAP importé dans la subvention.", "success")
+    return redirect(url_for("main.subvention_pilotage", subvention_id=sub.id))
 
 
 @bp.route("/subvention/<int:subvention_id>/delete", methods=["POST"])

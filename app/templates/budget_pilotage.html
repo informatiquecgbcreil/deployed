@@ -183,6 +183,36 @@
 
     <div style="padding: 0 16px 18px 16px;">
       <div class="card">
+        <div class="card-header"><h3 class="card-title" style="margin:0;">Importer un appel à projet</h3></div>
+        <div style="padding: 0 16px 16px 16px;">
+          <p class="muted">Copie les charges/produits d’un projet AAP vers cette subvention.</p>
+          <form method="POST" action="{{ url_for('main.subvention_sync_projet', subvention_id=sub.id) }}" class="stack">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label>
+              <div style="font-size:12px; color:var(--muted); font-weight:700;">Projet existant</div>
+              <select name="projet_id" style="width:100%;">
+                <option value="">— choisir —</option>
+                {% for p in projets %}
+                  <option value="{{ p.id }}">{{ p.nom }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <div style="font-size:12px; color:var(--muted); font-weight:700;">Nouveau projet (optionnel)</div>
+              <input name="new_projet_name" placeholder="Nom du projet">
+            </label>
+            <label class="inline" style="gap:8px;">
+              <input type="checkbox" name="replace_lines" value="1">
+              Remplacer toutes les lignes existantes
+            </label>
+            <button class="btn warn" type="submit">Importer l’AAP</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding: 0 16px 18px 16px;">
+      <div class="card">
         <div class="card-header"><h3 class="card-title" style="margin:0;">Ajouter une ligne (charge / produit)</h3></div>
         <div style="padding: 0 16px 16px 16px;">
           <form method="POST" action="{{ url_for('main.subvention_pilotage', subvention_id=sub.id) }}" style="display:grid; grid-template-columns: 110px 1fr 150px 150px 160px 140px; gap:10px; align-items:end;">
