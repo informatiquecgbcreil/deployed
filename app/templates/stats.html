@@ -22,9 +22,9 @@
     <div class="spacer"></div>
 
     <div class="kpi">
-      <div class="box"><div class="muted">Total reçu</div><div class="v">{{ "%.2f"|format(money_to_float(total_recu or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Total engagé</div><div class="v">{{ "%.2f"|format(money_to_float(total_engage or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Total reste</div><div class="v">{{ "%.2f"|format(money_to_float(total_reste or 0)) }}€</div></div>
+      <div class="box"><div class="muted">Total reçu</div><div class="v">{{ money_format(total_recu or 0) }}€</div></div>
+      <div class="box"><div class="muted">Total engagé</div><div class="v">{{ money_format(total_engage or 0) }}€</div></div>
+      <div class="box"><div class="muted">Total reste</div><div class="v">{{ money_format(total_reste or 0) }}€</div></div>
       <div class="box"><div class="muted">Secteurs</div><div class="v">{{ by_secteur|length }}</div></div>
       <div class="box"><div class="muted">Comptes</div><div class="v">{{ by_compte|length }}</div></div>
       <div class="box"><div class="muted">Projets</div><div class="v">{{ by_projet|length }}</div></div>
@@ -113,7 +113,7 @@
               <div class="bar-segment engage" style="width: {{ ((v.engage or 0) / max_secteur_total * 100) if max_secteur_total else 0 }}%" title="Engagé"></div>
               <div class="bar-segment reste" style="width: {{ ((v.reste or 0) / max_secteur_total * 100) if max_secteur_total else 0 }}%" title="Reste"></div>
             </div>
-            <div class="bar-values">{{ "%.2f"|format(money_to_float(v.recu or 0)) }}€ / {{ "%.2f"|format(money_to_float(v.engage or 0)) }}€ / {{ "%.2f"|format(money_to_float(v.reste or 0)) }}€</div>
+            <div class="bar-values">{{ money_format(v.recu or 0) }}€ / {{ money_format(v.engage or 0) }}€ / {{ money_format(v.reste or 0) }}€</div>
           </div>
         {% endfor %}
         {% if by_secteur|length == 0 %}
@@ -129,9 +129,9 @@
             {% for sec, v in by_secteur.items() %}
               <tr>
                 <td><strong>{{ sec }}</strong></td>
-                <td>{{ "%.2f"|format(money_to_float(v.recu or 0)) }}€</td>
-                <td>{{ "%.2f"|format(money_to_float(v.engage or 0)) }}€</td>
-                <td>{{ "%.2f"|format(money_to_float(v.reste or 0)) }}€</td>
+                <td>{{ money_format(v.recu or 0) }}€</td>
+                <td>{{ money_format(v.engage or 0) }}€</td>
+                <td>{{ money_format(v.reste or 0) }}€</td>
               </tr>
             {% endfor %}
             {% if by_secteur|length == 0 %}
@@ -153,7 +153,7 @@
               <div class="bar-segment engage" style="width: {{ ((v.engage or 0) / max_compte_total * 100) if max_compte_total else 0 }}%" title="Engagé"></div>
               <div class="bar-segment reste" style="width: {{ ((v.reste or 0) / max_compte_total * 100) if max_compte_total else 0 }}%" title="Reste"></div>
             </div>
-            <div class="bar-values">{{ "%.2f"|format(money_to_float(v.reel or 0)) }}€ / {{ "%.2f"|format(money_to_float(v.engage or 0)) }}€ / {{ "%.2f"|format(money_to_float(v.reste or 0)) }}€</div>
+            <div class="bar-values">{{ money_format(v.reel or 0) }}€ / {{ money_format(v.engage or 0) }}€ / {{ money_format(v.reste or 0) }}€</div>
           </div>
         {% endfor %}
         {% if by_compte|length == 0 %}
@@ -170,8 +170,8 @@
               <tr>
                 <td><strong>{{ c }}</strong></td>
                 <td>{{ "%.2f"|format(v.reel or 0) }}€</td>
-                <td>{{ "%.2f"|format(money_to_float(v.engage or 0)) }}€</td>
-                <td>{{ "%.2f"|format(money_to_float(v.reste or 0)) }}€</td>
+                <td>{{ money_format(v.engage or 0) }}€</td>
+                <td>{{ money_format(v.reste or 0) }}€</td>
               </tr>
             {% endfor %}
             {% if by_compte|length == 0 %}
@@ -197,7 +197,7 @@
             <div class="bar-segment engage" style="width: {{ ((p.engage or 0) / max_projet_total * 100) if max_projet_total else 0 }}%" title="Engagé"></div>
             <div class="bar-segment reste" style="width: {{ ((p.reste or 0) / max_projet_total * 100) if max_projet_total else 0 }}%" title="Reste"></div>
           </div>
-          <div class="bar-values">{{ "%.2f"|format(money_to_float(p.recu or 0)) }}€ / {{ "%.2f"|format(money_to_float(p.engage or 0)) }}€ / {{ "%.2f"|format(money_to_float(p.reste or 0)) }}€</div>
+          <div class="bar-values">{{ money_format(p.recu or 0) }}€ / {{ money_format(p.engage or 0) }}€ / {{ money_format(p.reste or 0) }}€</div>
         </div>
       {% endfor %}
       {% if by_projet|length == 0 %}
@@ -225,12 +225,12 @@
             <tr>
               <td>{{ p.secteur }}</td>
               <td><strong>{{ p.nom }}</strong></td>
-              <td>{{ "%.2f"|format(money_to_float(p.demande or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.attribue or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.recu or 0)) }}€</td>
+              <td>{{ money_format(p.demande or 0) }}€</td>
+              <td>{{ money_format(p.attribue or 0) }}€</td>
+              <td>{{ money_format(p.recu or 0) }}€</td>
               <td>{{ "%.2f"|format(p.reel_lignes or 0) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.engage or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.reste or 0)) }}€</td>
+              <td>{{ money_format(p.engage or 0) }}€</td>
+              <td>{{ money_format(p.reste or 0) }}€</td>
             </tr>
           {% endfor %}
           {% if by_projet|length == 0 %}

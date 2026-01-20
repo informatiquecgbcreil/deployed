@@ -138,8 +138,8 @@
               <td><strong>{{ l.libelle }}</strong></td>
               <td>{{ "%.2f"|format(l.base or 0) }}€</td>
               <td>{{ "%.2f"|format(l.reel or 0) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(l.engage or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(l.reste or 0)) }}€</td>
+              <td>{{ money_format(l.engage or 0) }}€</td>
+              <td>{{ money_format(l.reste or 0) }}€</td>
               <td style="min-width:240px;">
                 <div class="meter" aria-label="ligne">
                   {% if is_prod %}

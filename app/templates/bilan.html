@@ -57,12 +57,12 @@
   <div class="card">
     <h2>Synthèse</h2>
     <div class="kpi">
-      <div class="box"><div class="muted">Demandé</div><div class="v">{{ "%.2f"|format(money_to_float(totals.demande or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Attribué</div><div class="v">{{ "%.2f"|format(money_to_float(totals.attribue or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Reçu</div><div class="v">{{ "%.2f"|format(money_to_float(totals.recu or 0)) }}€</div></div>
+      <div class="box"><div class="muted">Demandé</div><div class="v">{{ money_format(totals.demande or 0) }}€</div></div>
+      <div class="box"><div class="muted">Attribué</div><div class="v">{{ money_format(totals.attribue or 0) }}€</div></div>
+      <div class="box"><div class="muted">Reçu</div><div class="v">{{ money_format(totals.recu or 0) }}€</div></div>
       <div class="box"><div class="muted">Ventilé (réel lignes)</div><div class="v">{{ "%.2f"|format(totals.reel_lignes or 0) }}€</div></div>
-      <div class="box"><div class="muted">Engagé</div><div class="v">{{ "%.2f"|format(money_to_float(totals.engage or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Reste</div><div class="v">{{ "%.2f"|format(money_to_float(totals.reste or 0)) }}€</div></div>
+      <div class="box"><div class="muted">Engagé</div><div class="v">{{ money_format(totals.engage or 0) }}€</div></div>
+      <div class="box"><div class="muted">Reste</div><div class="v">{{ money_format(totals.reste or 0) }}€</div></div>
     </div>
   </div>
 
@@ -91,12 +91,12 @@
             <td class="muted">{{ s.annee_exercice }}</td>
             <td class="muted">{{ s.secteur }}</td>
             <td><strong>{{ s.nom }}</strong></td>
-            <td>{{ "%.2f"|format(money_to_float(s.montant_demande or 0)) }}€</td>
-            <td>{{ "%.2f"|format(money_to_float(s.montant_attribue or 0)) }}€</td>
-            <td>{{ "%.2f"|format(money_to_float(s.montant_recu or 0)) }}€</td>
-            <td><strong>{{ "%.2f"|format(money_to_float(s.total_reel_lignes or 0)) }}€</strong></td>
-            <td>{{ "%.2f"|format(money_to_float(s.total_engage or 0)) }}€</td>
-            <td>{{ "%.2f"|format(money_to_float(s.total_reste or 0)) }}€</td>
+            <td>{{ money_format(s.montant_demande or 0) }}€</td>
+            <td>{{ money_format(s.montant_attribue or 0) }}€</td>
+            <td>{{ money_format(s.montant_recu or 0) }}€</td>
+            <td><strong>{{ money_format(s.total_reel_lignes or 0) }}€</strong></td>
+            <td>{{ money_format(s.total_engage or 0) }}€</td>
+            <td>{{ money_format(s.total_reste or 0) }}€</td>
             <td>
               <a class="btn" href="{{ url_for('main.subvention_pilotage', subvention_id=s.id) }}">Pilotage</a>
               <a class="btn" href="{{ url_for('main.export_subvention_csv', subvention_id=s.id) }}">CSV</a>

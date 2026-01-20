@@ -29,10 +29,10 @@
     </div>
 
     <div class="small">
-      Charges prévues : <strong>{{ "%.2f"|format(money_to_float(bs.total_charges or 0)) }}€</strong><br>
-      Produits (base) : <strong>{{ "%.2f"|format(money_to_float(bs.total_produits_base or 0)) }}€</strong><br>
-      Ventilé (charges) : <strong>{{ "%.2f"|format(money_to_float(bs.total_ventile_charges or 0)) }}€</strong><br>
-      Ventilé (produits) : <strong>{{ "%.2f"|format(money_to_float(bs.total_ventile_produits or 0)) }}€</strong>
+      Charges prévues : <strong>{{ money_format(bs.total_charges or 0) }}€</strong><br>
+      Produits (base) : <strong>{{ money_format(bs.total_produits_base or 0) }}€</strong><br>
+      Ventilé (charges) : <strong>{{ money_format(bs.total_ventile_charges or 0) }}€</strong><br>
+      Ventilé (produits) : <strong>{{ money_format(bs.total_ventile_produits or 0) }}€</strong>
     </div>
 
     <div style="min-width: 260px;">

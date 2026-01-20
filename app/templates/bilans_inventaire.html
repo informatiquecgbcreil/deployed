@@ -40,7 +40,7 @@
         </div>
         <div class="card">
           <h3>Valeur estimée</h3>
-          <h2>{{ '%.2f'|format(money_to_float(data.valeur)) }} €</h2>
+          <h2>{{ money_format(data.valeur) }} €</h2>
           <p class="muted">Somme valeur_unitaire × quantité (si renseigné).</p>
         </div>
       </div>

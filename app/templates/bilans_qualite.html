@@ -40,13 +40,13 @@
         <div class="card">
           <h3>Lignes “à ventiler”</h3>
           <h2>{{ data.a_ventiler.nb }}</h2>
-          <p class="muted">Montant : <strong>{{ '%.2f'|format(money_to_float(data.a_ventiler.montant)) }} €</strong></p>
+          <p class="muted">Montant : <strong>{{ money_format(data.a_ventiler.montant) }} €</strong></p>
           <p class="muted">Âge moyen : <strong>{{ data.a_ventiler.age_moyen_jours }} jours</strong></p>
         </div>
         <div class="card">
           <h3>Dépenses hors subvention</h3>
           <h2>{{ data.hors_subvention.nb }}</h2>
-          <p class="muted">Montant : <strong>{{ '%.2f'|format(money_to_float(data.hors_subvention.montant)) }} €</strong></p>
+          <p class="muted">Montant : <strong>{{ money_format(data.hors_subvention.montant) }} €</strong></p>
           <p class="muted">(Fonds propres / autres cas “terrain”.)</p>
         </div>
         <div class="card">

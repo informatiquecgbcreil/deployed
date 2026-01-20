@@ -29,15 +29,15 @@
       <div class="grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px;">
         <div class="card" style="padding:12px;">
           <div class="muted">Budget attribué</div>
-          <div class="kpi" data-count="{{ (money_to_float(kpis.attribue or 0)) | round(0) }}" style="font-size:22px; font-weight:800;">{{ "%.2f"|format(money_to_float(kpis.attribue or 0)) }}€</div>
+          <div class="kpi" data-count="{{ (money_to_float(kpis.attribue or 0)) | round(0) }}" style="font-size:22px; font-weight:800;">{{ money_format(kpis.attribue or 0) }}€</div>
         </div>
         <div class="card" style="padding:12px;">
           <div class="muted">Engagé</div>
-          <div class="kpi" data-count="{{ (money_to_float(kpis.engage or 0)) | round(0) }}" style="font-size:22px; font-weight:800;">{{ "%.2f"|format(money_to_float(kpis.engage or 0)) }}€</div>
+          <div class="kpi" data-count="{{ (money_to_float(kpis.engage or 0)) | round(0) }}" style="font-size:22px; font-weight:800;">{{ money_format(kpis.engage or 0) }}€</div>
         </div>
         <div class="card" style="padding:12px;">
           <div class="muted">Disponible</div>
-          <div class="kpi" data-count="{{ (money_to_float(kpis.reste or 0)) | round(0) }}" style="font-size:22px; font-weight:800;">{{ "%.2f"|format(money_to_float(kpis.reste or 0)) }}€</div>
+          <div class="kpi" data-count="{{ (money_to_float(kpis.reste or 0)) | round(0) }}" style="font-size:22px; font-weight:800;">{{ money_format(kpis.reste or 0) }}€</div>
         </div>
         <div class="card" style="padding:12px;">
           <div class="muted">Taux conso</div>
@@ -137,7 +137,7 @@
         <ul style="margin:0; padding-left:18px;">
           {% for d in recents.depenses %}
             <li class="muted" style="margin:6px 0;">
-              {{ d.libelle }} — <strong>{{ "%.2f"|format(money_to_float(d.montant or 0)) }}€</strong>
+              {{ d.libelle }} — <strong>{{ money_format(d.montant or 0) }}€</strong>
             </li>
           {% endfor %}
         </ul>

@@ -53,15 +53,15 @@
               <tr>
                 <td>{{ r.secteur }}</td>
                 <td><strong>{{ r.nom }}</strong></td>
-                <td style="text-align:right;">{{ '%.2f'|format(money_to_float(r.accorde)) }} €</td>
-                <td style="text-align:right;">{{ '%.2f'|format(money_to_float(r.depenses)) }} €</td>
-                <td style="text-align:right;">{{ '%.2f'|format(money_to_float(r.reste)) }} €</td>
+                <td style="text-align:right;">{{ money_format(r.accorde) }} €</td>
+                <td style="text-align:right;">{{ money_format(r.depenses) }} €</td>
+                <td style="text-align:right;">{{ money_format(r.reste) }} €</td>
                 <td style="text-align:right;">
                   <span style="padding:2px 8px; border-radius:999px; background:{{ badge }}; color:white;">
                     {{ '%.1f'|format(r.taux) }}%
                   </span>
                 </td>
-                <td style="text-align:right;">{{ '%.2f'|format(money_to_float(r.a_ventiler)) }} €</td>
+                <td style="text-align:right;">{{ money_format(r.a_ventiler) }} €</td>
                 <td style="text-align:right;">{{ r.nb_factures }}</td>
                 <td style="text-align:right; white-space:nowrap;">
                   <a class="btn" href="{{ url_for('bilans.bilan_subvention', year=year, id=r.id) }}">Ouvrir</a>

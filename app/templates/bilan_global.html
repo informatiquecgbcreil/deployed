@@ -43,11 +43,11 @@
     <div class="spacer"></div>
 
     <div class="kpi">
-      <div class="box"><div class="muted">Demandé</div><div class="v">{{ "%.2f"|format(money_to_float(total_demande or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Attribué</div><div class="v">{{ "%.2f"|format(money_to_float(total_attribue or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Reçu</div><div class="v">{{ "%.2f"|format(money_to_float(total_recu or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Engagé</div><div class="v">{{ "%.2f"|format(money_to_float(total_engage or 0)) }}€</div></div>
-      <div class="box"><div class="muted">Reste</div><div class="v">{{ "%.2f"|format(money_to_float(total_reste or 0)) }}€</div></div>
+      <div class="box"><div class="muted">Demandé</div><div class="v">{{ money_format(total_demande or 0) }}€</div></div>
+      <div class="box"><div class="muted">Attribué</div><div class="v">{{ money_format(total_attribue or 0) }}€</div></div>
+      <div class="box"><div class="muted">Reçu</div><div class="v">{{ money_format(total_recu or 0) }}€</div></div>
+      <div class="box"><div class="muted">Engagé</div><div class="v">{{ money_format(total_engage or 0) }}€</div></div>
+      <div class="box"><div class="muted">Reste</div><div class="v">{{ money_format(total_reste or 0) }}€</div></div>
     </div>
   </div>
 
@@ -73,9 +73,9 @@
               <td class="muted">{{ s.annee_exercice }}</td>
               <td class="muted">{{ s.secteur }}</td>
               <td><strong>{{ s.nom }}</strong></td>
-              <td>{{ "%.2f"|format(money_to_float(s.montant_recu or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(s.total_engage or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(s.total_reste or 0)) }}€</td>
+              <td>{{ money_format(s.montant_recu or 0) }}€</td>
+              <td>{{ money_format(s.total_engage or 0) }}€</td>
+              <td>{{ money_format(s.total_reste or 0) }}€</td>
               <td>
                 <a class="btn" href="{{ url_for('main.subvention_bilan', subvention_id=s.id) }}">Bilan</a>
                 <a class="btn" href="{{ url_for('main.subvention_pilotage', subvention_id=s.id) }}">Pilotage</a>

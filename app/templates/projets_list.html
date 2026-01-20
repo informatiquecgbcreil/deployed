@@ -40,11 +40,11 @@
                   <span class="muted">—</span>
                 {% endif %}
               </td>
-              <td>{{ "%.2f"|format(money_to_float(p.total_demande or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.total_attribue or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.total_recu or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.total_engage or 0)) }}€</td>
-              <td>{{ "%.2f"|format(money_to_float(p.total_reste or 0)) }}€</td>
+              <td>{{ money_format(p.total_demande or 0) }}€</td>
+              <td>{{ money_format(p.total_attribue or 0) }}€</td>
+              <td>{{ money_format(p.total_recu or 0) }}€</td>
+              <td>{{ money_format(p.total_engage or 0) }}€</td>
+              <td>{{ money_format(p.total_reste or 0) }}€</td>
               <td>
                 <div class="inline" style="gap:8px; flex-wrap:wrap;">
                   <a class="btn" href="{{ url_for('projets.projets_edit', projet_id=p.id) }}">Ouvrir</a>
